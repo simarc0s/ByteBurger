@@ -1,15 +1,52 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 import sqlite3
+import jwt
+import datetime
+from functools import wraps
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret_key'
 DATABASE = 'database.db'
 
 def getdb():
     conn = sqlite3.connect(DATABASE)
     return conn
 
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('x-access-tokens')
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 403
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            current_user = data['username']
+        except:  # noqa: E722
+            return jsonify({'message': 'Token is invalid!'}), 403
+        return f(current_user, *args, **kwargs)
+    return decorated
+
+@app.route('/login', methods=['POST'])
+def login():
+    auth = request.get_json()
+    username = auth['username']
+    password = auth['password']
+
+    conn = getdb()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM empregados WHERE username = ? AND password = ?", (username, password))
+    user = cursor.fetchone()
+    conn.close()
+
+    if not user:
+        return make_response('Could not verify', 401, {'WWW-Authenticate': 'Basic realm="Login required!"'})
+
+    token = jwt.encode({'username': username, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
+    return jsonify({'token': token})
+
 @app.route('/clientes', methods=['POST'])
-def addcliente():
+@token_required
+def addcliente(current_user):
     data = request.get_json()
     conn = getdb()
     cursor = conn.cursor()
@@ -20,7 +57,8 @@ def addcliente():
     return jsonify({'status': 'success'}), 201
 
 @app.route('/pedidos', methods=['POST'])
-def add_pedido():
+@token_required
+def add_pedido(current_user):
     data = request.get_json()
     app.logger.info(f'Received data: {data}')
     conn = getdb()
