@@ -1,10 +1,45 @@
 import sqlite3
 
-# Conectar a base de dados
+# Função para recriar a tabela 'pedidos' com ON DELETE CASCADE
+def recriar_tabela_pedidos(cursor):
+    # Desativar temporariamente as restrições de chave estrangeira
+    cursor.execute("PRAGMA foreign_keys = OFF")
+    
+    # Criar a nova tabela 'pedidos' com ON DELETE CASCADE
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS pedidos_new (
+        id_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_cliente INTEGER,
+        nome_hamburguer TEXT,
+        quantidade INTEGER,
+        tamanho TEXT CHECK(tamanho IN ('infantil', 'normal', 'duplo')),
+        data_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
+        valor_total REAL,
+        FOREIGN KEY(id_cliente) REFERENCES clientes(id_cliente),
+        FOREIGN KEY(nome_hamburguer) REFERENCES hamburgueres(nome_hamburguer) ON DELETE CASCADE
+    );
+    """)
+    
+    # Copiar os dados da tabela antiga 'pedidos' para a nova
+    cursor.execute("INSERT INTO pedidos_new SELECT * FROM pedidos")
+    
+    # Eliminar a tabela antiga 'pedidos'
+    cursor.execute("DROP TABLE pedidos")
+    
+    # Renomear a nova tabela para 'pedidos'
+    cursor.execute("ALTER TABLE pedidos_new RENAME TO pedidos")
+    
+    # Reativar as restrições de chave estrangeira
+    cursor.execute("PRAGMA foreign_keys = ON")
+
+# Conectar à base de dados
 conn = sqlite3.connect("database.db")
 cursor = conn.cursor()
 
-# Criar tabelas se não existirem
+# Desativar temporariamente as restrições de chave estrangeira
+cursor.execute("PRAGMA foreign_keys = OFF")
+
+# Criar as tabelas se ainda não existirem
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS clientes (
     id_cliente INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -14,7 +49,6 @@ CREATE TABLE IF NOT EXISTS clientes (
 );
 """)
 
-# Criar a tabela 'hamburgueres' se não existir
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS hamburgueres (
     nome_hamburguer TEXT PRIMARY KEY,
@@ -22,7 +56,7 @@ CREATE TABLE IF NOT EXISTS hamburgueres (
 );
 """)
 
-# Criar a tabela 'pedidos' se não existir
+# Criar a tabela 'pedidos' inicial sem ON DELETE CASCADE
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS pedidos (
     id_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,7 +71,6 @@ CREATE TABLE IF NOT EXISTS pedidos (
 );
 """)
 
-# Criar a tabela 'empregados' se não existir
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS empregados (
     id_empregado INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,9 +93,9 @@ except sqlite3.IntegrityError:
 
 # Inserir alguns hambúrgueres na tabela 'hamburgueres'
 hamburgueres = [
-    ("Hamburguer Clássico", "Pão, Carne, Alface, Tomate"),
-    ("Cheeseburguer", "Pão, Carne, Queijo"),
-    ("Hamburguer Vegetariano", "Pão, Alface, Tomate, Queijo, Cogumelos"),
+    ("Big Tasty", "Pão, Carne, Alface, Tomate, Queijo"),
+    ("Big Mac", "Pão, Carne, Queijo, Alface, Carne, Pão"),
+    ("Mc Royal", "Pão, Tomate, Queijo, Cogumelos, Bacon"),
 ]
 
 for hamburguer in hamburgueres:
@@ -76,6 +109,15 @@ for hamburguer in hamburgueres:
 
 # Guardar (commit) as mudanças na base de dados
 conn.commit()
+
+# Recriar a tabela 'pedidos' com ON DELETE CASCADE
+recriar_tabela_pedidos(cursor)
+
+# Guardar (commit) as mudanças na base de dados
+conn.commit()
+
+# Reativar as restrições de chave estrangeira
+cursor.execute("PRAGMA foreign_keys = ON")
 
 # Fechar a conexão com a base de dados
 conn.close()
