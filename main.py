@@ -50,10 +50,9 @@ class OrderForm(BoxLayout):
         # Nome do Cliente
         self.add_widget(Label(text="Nome do Cliente"))
         self.cliente_input = TextInput()
-        self.cliente_input.bind(text=self.on_cliente_text)
         self.add_widget(self.cliente_input)
 
-        self.nome_dropdown_button = Button(text="▼")
+        self.nome_dropdown_button = Button(text="Lista completa de nomes")
         self.nome_dropdown_button.bind(on_release=self.show_nome_dropdown)
         self.add_widget(self.nome_dropdown_button)
 
@@ -68,14 +67,15 @@ class OrderForm(BoxLayout):
         self.telefone_input.bind(text=self.on_telefone_text)
         self.add_widget(self.telefone_input)
 
-        self.telefone_dropdown_button = Button(text="▼")
+        self.telefone_dropdown_button = Button(text="Lista completa de telefones")
         self.telefone_dropdown_button.bind(on_release=self.show_telefone_dropdown)
         self.add_widget(self.telefone_dropdown_button)
 
         # Nome do Hamburguer
         self.add_widget(Label(text="Nome do Hamburguer"))
-        self.hamburguer_input = TextInput()
-        self.add_widget(self.hamburguer_input)
+        self.hamburguer_dropdown_button = Button(text="Escolher Hamburguer")
+        self.hamburguer_dropdown_button.bind(on_release=self.show_hamburguer_dropdown)
+        self.add_widget(self.hamburguer_dropdown_button)
 
         # Quantidade
         self.add_widget(Label(text="Quantidade"))
@@ -83,7 +83,7 @@ class OrderForm(BoxLayout):
         self.add_widget(self.quantidade_input)
 
         # Tamanho
-        self.add_widget(Label(text="Tamanho"))
+        self.add_widget(Label(text="Tamanho (infantil, normal, duplo)"))
         self.tamanho_input = TextInput()
         self.add_widget(self.tamanho_input)
 
@@ -92,74 +92,8 @@ class OrderForm(BoxLayout):
         self.submit.bind(on_press=self.submit_order)
         self.add_widget(self.submit)
 
-    def submit_order(self, instance):
-        try:
-            quantidade = int(self.quantidade_input.text)
-        except ValueError:
-            print("A quantidade deve ser um número inteiro.")
-            return
-
-        data = {
-            "nome_cliente": self.cliente_input.text,
-            "morada": self.morada_input.text,
-            "telefone": self.telefone_input.text,
-            "nome_hamburguer": self.hamburguer_input.text,
-            "quantidade": quantidade,
-            "tamanho": self.tamanho_input.text,
-        }
-        print("Enviando dados para o servidor:", data)
-        headers = {"x-access-tokens": App.get_running_app().token}
-        try:
-            response = requests.post(
-                "http://127.0.0.1:5000/pedidos", json=data, headers=headers
-            )
-            if response.status_code == 201:
-                print("Pedido registado com sucesso!")
-            else:
-                print(
-                    "Falha ao registar o pedido. Código de estado:",
-                    response.status_code,
-                )
-                print("Resposta do servidor:", response.text)
-        except requests.exceptions.RequestException as e:
-            print("Erro ao conectar ao servidor:", e)
-
-    def on_cliente_text(self, instance, value):
-        headers = {"x-access-tokens": App.get_running_app().token}
-        try:
-            response = requests.get(
-                f"http://127.0.0.1:5000/clientes/nome/{value}", headers=headers
-            )
-            if response.status_code == 200:
-                clientes = response.json()
-                if clientes:
-                    cliente = clientes[0]
-                    self.cliente_input.text = cliente["nome"]
-                    self.morada_input.text = cliente["morada"]
-                    self.telefone_input.text = cliente["telefone"]
-            else:
-                print(
-                    "Falha ao buscar cliente. Código de estado:", response.status_code
-                )
-                print("Resposta do servidor:", response.text)
-        except requests.exceptions.RequestException as e:
-            print("Erro ao conectar ao servidor:", e)
-
     def on_telefone_text(self, instance, value):
-        headers = {"x-access-tokens": App.get_running_app().token}
-        try:
-            response = requests.get(
-                f"http://127.0.0.1:5000/clientes/{value}", headers=headers
-            )
-            if response.status_code == 200:
-                cliente = response.json()
-                self.cliente_input.text = cliente["nome"]
-                self.morada_input.text = cliente["morada"]
-            else:
-                print("Cliente não encontrado. Código de estado:", response.status_code)
-                print("Resposta do servidor:", response.text)
-        except requests.exceptions.RequestException as e:
-            print("Erro ao conectar ao servidor:", e)
+        print("Telefone digitado:", value)
 
     def show_nome_dropdown(self, instance):
         headers = {"x-access-tokens": App.get_running_app().token}
@@ -170,7 +104,9 @@ class OrderForm(BoxLayout):
                 clientes = response.json()
                 for cliente in clientes:
                     btn = Button(text=cliente["nome"], size_hint_y=None, height=44)
-                    btn.bind(on_release=lambda btn: self.select_cliente(btn.text))
+                    btn.bind(
+                        on_release=lambda btn: self.select_cliente(btn.text, cliente)
+                    )
                     dropdown.add_widget(btn)
             else:
                 print(
@@ -180,9 +116,6 @@ class OrderForm(BoxLayout):
         except requests.exceptions.RequestException as e:
             print("Erro ao conectar ao servidor:", e)
         dropdown.open(instance)
-
-    def select_cliente(self, nome):
-        self.cliente_input.text = nome
 
     def show_telefone_dropdown(self, instance):
         headers = {"x-access-tokens": App.get_running_app().token}
@@ -193,7 +126,9 @@ class OrderForm(BoxLayout):
                 clientes = response.json()
                 for cliente in clientes:
                     btn = Button(text=cliente["telefone"], size_hint_y=None, height=44)
-                    btn.bind(on_release=lambda btn: self.select_telefone(btn.text))
+                    btn.bind(
+                        on_release=lambda btn: self.select_telefone(btn.text, cliente)
+                    )
                     dropdown.add_widget(btn)
             else:
                 print(
@@ -204,8 +139,65 @@ class OrderForm(BoxLayout):
             print("Erro ao conectar ao servidor:", e)
         dropdown.open(instance)
 
-    def select_telefone(self, telefone):
+    def show_hamburguer_dropdown(self, instance):
+        headers = {"x-access-tokens": App.get_running_app().token}
+        dropdown = DropDown()
+        try:
+            response = requests.get(
+                "http://127.0.0.1:5000/hamburgueres", headers=headers
+            )
+            if response.status_code == 200:
+                hamburgueres = response.json()
+                for hamburguer in hamburgueres:
+                    btn = Button(text=hamburguer, size_hint_y=None, height=44)
+                    btn.bind(on_release=lambda btn: self.select_hamburguer(btn.text))
+                    dropdown.add_widget(btn)
+            else:
+                print(
+                    "Falha ao buscar hambúrgueres. Código de estado:",
+                    response.status_code,
+                )
+                print("Resposta do servidor:", response.text)
+        except requests.exceptions.RequestException as e:
+            print("Erro ao conectar ao servidor:", e)
+        dropdown.open(instance)
+
+    def select_cliente(self, nome, cliente):
+        self.cliente_input.text = nome
+        self.morada_input.text = cliente["morada"]
+        self.telefone_input.text = cliente["telefone"]
+
+    def select_telefone(self, telefone, cliente):
         self.telefone_input.text = telefone
+        self.cliente_input.text = cliente["nome"]
+        self.morada_input.text = cliente["morada"]
+
+    def select_hamburguer(self, nome):
+        self.hamburguer_dropdown_button.text = nome
+
+    def submit_order(self, instance):
+        data = {
+            "nome_cliente": self.cliente_input.text,
+            "morada": self.morada_input.text,
+            "telefone": self.telefone_input.text,
+            "nome_hamburguer": self.hamburguer_dropdown_button.text,
+            "quantidade": self.quantidade_input.text,
+            "tamanho": self.tamanho_input.text,
+        }
+        headers = {"x-access-tokens": App.get_running_app().token}
+        try:
+            response = requests.post(
+                "http://127.0.0.1:5000/pedidos", json=data, headers=headers
+            )
+            if response.status_code == 201:
+                print("Pedido registrado com sucesso!")
+            else:
+                print(
+                    "Falha ao registrar pedido. Código de estado:", response.status_code
+                )
+                print("Resposta do servidor:", response.text)
+        except requests.exceptions.RequestException as e:
+            print("Erro ao conectar ao servidor:", e)
 
 
 class MyApp(App):
