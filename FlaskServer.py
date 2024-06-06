@@ -67,22 +67,6 @@ def login():
     return jsonify({"token": token})
 
 
-# Rota para adicionar clientes, protegida por token
-@app.route("/clientes", methods=["POST"])
-@token_required
-def addcliente(current_user):
-    data = request.get_json()
-    conn = getdb()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO clientes (nome, morada, telefone) VALUES (?, ?, ?)",
-        (data["nome"], data["morada"], data["telefone"]),
-    )
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "success"}), 201
-
-
 # Rota para adicionar pedidos, protegida por token
 @app.route("/pedidos", methods=["POST"])
 @token_required
@@ -109,6 +93,8 @@ def add_pedido(current_user):
     valor_total = calcular_valor_total(
         data["nome_hamburguer"], data["quantidade"], data["tamanho"]
     )
+
+    app.logger.info(f"Inserting pedido for cliente_id: {cliente_id}")
 
     cursor.execute(
         "INSERT INTO pedidos (id_cliente, nome_hamburguer, quantidade, tamanho, valor_total) VALUES (?, ?, ?, ?, ?)",
@@ -198,6 +184,23 @@ def listar_todos_clientes(current_user):
         return jsonify(result)
     else:
         return jsonify({"message": "Nenhum cliente encontrado"}), 404
+
+
+# Rota para listar todos os hambúrgueres
+@app.route("/hamburgueres", methods=["GET"])
+@token_required
+def listar_todos_hamburgueres(current_user):
+    conn = getdb()
+    cursor = conn.cursor()
+    cursor.execute("SELECT nome_hamburguer FROM hamburgueres")
+    hamburgueres = cursor.fetchall()
+    conn.close()
+
+    if hamburgueres:
+        result = [hamburguer[0] for hamburguer in hamburgueres]
+        return jsonify(result)
+    else:
+        return jsonify({"message": "Nenhum hambúrguer encontrado"}), 404
 
 
 # Função para calcular o valor total de um pedido
