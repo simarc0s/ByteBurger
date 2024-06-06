@@ -174,6 +174,32 @@ def encontrar_cliente_por_nome(current_user, nome):
         return jsonify({"message": "Nenhum cliente encontrado com esse nome"}), 404
 
 
+# Rota para listar todos os clientes
+@app.route("/clientes", methods=["GET"])
+@token_required
+def listar_todos_clientes(current_user):
+    conn = getdb()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM clientes")
+    clientes = cursor.fetchall()
+    conn.close()
+
+    if clientes:
+        result = []
+        for cliente in clientes:
+            result.append(
+                {
+                    "id_cliente": cliente[0],
+                    "nome": cliente[1],
+                    "morada": cliente[2],
+                    "telefone": cliente[3],
+                }
+            )
+        return jsonify(result)
+    else:
+        return jsonify({"message": "Nenhum cliente encontrado"}), 404
+
+
 # Função para calcular o valor total de um pedido
 def calcular_valor_total(nome_hamburguer, quantidade, tamanho):
     preco_base = 5.0
