@@ -4,7 +4,7 @@ import sqlite3
 conn = sqlite3.connect("database.db")
 cursor = conn.cursor()
 
-# Criar tabelas
+# Criar tabelas se não existirem
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS clientes (
     id_cliente INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS clientes (
 );
 """)
 
+# Criar a tabela 'hamburgueres' se não existir
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS hamburgueres (
     nome_hamburguer TEXT PRIMARY KEY,
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS hamburgueres (
 );
 """)
 
+# Criar a tabela 'pedidos' se não existir
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS pedidos (
     id_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,6 +37,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
 );
 """)
 
+# Criar a tabela 'empregados' se não existir
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS empregados (
     id_empregado INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,12 +46,14 @@ CREATE TABLE IF NOT EXISTS empregados (
 );
 """)
 
-# Guardar (commit) as mudanças
+# Guardar (commit) as mudanças na base de dados
 conn.commit()
 
-# Inserir um usuário na tabela empregados
-cursor.execute("INSERT INTO empregados (username, password) VALUES (?, ?)", ("user1", "password1"))
+# Inserir um utilizador na tabela 'empregados'
+cursor.execute(
+    "INSERT INTO empregados (username, password) VALUES (?, ?)", ("user1", "password1")
+)
 conn.commit()
 
-# Fechar a conexão
+# Fechar a conexão com a base de dados
 conn.close()
