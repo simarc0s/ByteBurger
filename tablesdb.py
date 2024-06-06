@@ -50,9 +50,31 @@ CREATE TABLE IF NOT EXISTS empregados (
 conn.commit()
 
 # Inserir um utilizador na tabela 'empregados'
-cursor.execute(
-    "INSERT INTO empregados (username, password) VALUES (?, ?)", ("user1", "password1")
-)
+try:
+    cursor.execute(
+        "INSERT OR IGNORE INTO empregados (username, password) VALUES (?, ?)",
+        ("user1", "password1"),
+    )
+except sqlite3.IntegrityError:
+    print("Erro ao inserir empregado. Username já existe.")
+
+# Inserir alguns hambúrgueres na tabela 'hamburgueres'
+hamburgueres = [
+    ("Hamburguer Clássico", "Pão, Carne, Alface, Tomate"),
+    ("Cheeseburguer", "Pão, Carne, Queijo"),
+    ("Hamburguer Vegetariano", "Pão, Alface, Tomate, Queijo, Cogumelos"),
+]
+
+for hamburguer in hamburgueres:
+    try:
+        cursor.execute(
+            "INSERT OR IGNORE INTO hamburgueres (nome_hamburguer, ingredientes) VALUES (?, ?)",
+            hamburguer,
+        )
+    except sqlite3.IntegrityError:
+        print(f"Erro ao inserir hambúrguer: {hamburguer[0]} já existe.")
+
+# Guardar (commit) as mudanças na base de dados
 conn.commit()
 
 # Fechar a conexão com a base de dados
