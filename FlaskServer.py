@@ -11,30 +11,32 @@ app.config["SECRET_KEY"] = "secret_key"
 DATABASE = "database.db"
 
 
-# Função para obter a conexão com a base de dados
+# Função para obter a conexão com a base de dados SQLite
 def getdb():
     conn = sqlite3.connect(DATABASE)
     return conn
 
 
-# Decorador para exigir token de autenticação nas rotas protegidas
+# Decorador para exigir um token de autenticação nas rotas protegidas
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = request.headers.get("x-access-tokens")
         if not token:
-            return jsonify({"message": "Token is missing!"}), 403
+            return jsonify({"message": "Token está em falta!"}), 403
         try:
             data = jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
             current_user = data["username"]
-        except:  # noqa: E722
-            return jsonify({"message": "Token is invalid!"}), 403
+        except jwt.ExpiredSignatureError:
+            return jsonify({"message": "Token expirou!"}), 403
+        except jwt.InvalidTokenError:
+            return jsonify({"message": "Token inválido!"}), 403
         return f(current_user, *args, **kwargs)
 
     return decorated
 
 
-# Rota para fazer login e obter um token
+# Rota para fazer login e obter um token de autenticação
 @app.route("/login", methods=["POST"])
 def login():
     auth = request.get_json()
@@ -44,7 +46,7 @@ def login():
     conn = getdb()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM empregados WHERE username = ? AND password = ?",
+        "SELECT * FROM users WHERE username = ? AND password = ?",
         (username, password),
     )
     user = cursor.fetchone()
@@ -52,9 +54,9 @@ def login():
 
     if not user:
         return make_response(
-            "Could not verify",
+            "Não foi possível verificar",
             401,
-            {"WWW-Authenticate": 'Basic realm="Login required!"'},
+            {"WWW-Authenticate": 'Basic realm="Login requerido!"'},
         )
 
     token = jwt.encode(
@@ -67,12 +69,28 @@ def login():
     return jsonify({"token": token})
 
 
+# Rota para adicionar clientes, protegida por token
+@app.route("/clientes", methods=["POST"])
+@token_required
+def addcliente(current_user):
+    data = request.get_json()
+    conn = getdb()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO clientes (nome, morada, telefone) VALUES (?, ?, ?)",
+        (data["nome"], data["morada"], data["telefone"]),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "sucesso"}), 201
+
+
 # Rota para adicionar pedidos, protegida por token
 @app.route("/pedidos", methods=["POST"])
 @token_required
 def add_pedido(current_user):
     data = request.get_json()
-    app.logger.info(f"Received data: {data}")
+    app.logger.info(f"Dados recebidos: {data}")
     conn = getdb()
     cursor = conn.cursor()
 
@@ -94,8 +112,6 @@ def add_pedido(current_user):
         data["nome_hamburguer"], data["quantidade"], data["tamanho"]
     )
 
-    app.logger.info(f"Inserting pedido for cliente_id: {cliente_id}")
-
     cursor.execute(
         "INSERT INTO pedidos (id_cliente, nome_hamburguer, quantidade, tamanho, valor_total) VALUES (?, ?, ?, ?, ?)",
         (
@@ -108,10 +124,10 @@ def add_pedido(current_user):
     )
     conn.commit()
     conn.close()
-    return jsonify({"status": "success"}), 201
+    return jsonify({"status": "sucesso"}), 201
 
 
-# Rota para encontrar clientes pelo telefone
+# Rota para encontrar clientes pelo telefone, protegida por token
 @app.route("/clientes/<telefone>", methods=["GET"])
 @token_required
 def encontrar_cliente_por_telefone(current_user, telefone):
@@ -134,7 +150,7 @@ def encontrar_cliente_por_telefone(current_user, telefone):
         return jsonify({"message": "Cliente não encontrado"}), 404
 
 
-# Rota para encontrar clientes pelo nome
+# Rota para encontrar clientes pelo nome, protegida por token
 @app.route("/clientes/nome/<nome>", methods=["GET"])
 @token_required
 def encontrar_cliente_por_nome(current_user, nome):
@@ -160,7 +176,7 @@ def encontrar_cliente_por_nome(current_user, nome):
         return jsonify({"message": "Nenhum cliente encontrado com esse nome"}), 404
 
 
-# Rota para listar todos os clientes
+# Rota para listar todos os clientes, protegida por token
 @app.route("/clientes", methods=["GET"])
 @token_required
 def listar_todos_clientes(current_user):
@@ -186,18 +202,25 @@ def listar_todos_clientes(current_user):
         return jsonify({"message": "Nenhum cliente encontrado"}), 404
 
 
-# Rota para listar todos os hambúrgueres
+# Rota para listar todos os hambúrgueres, protegida por token
 @app.route("/hamburgueres", methods=["GET"])
 @token_required
 def listar_todos_hamburgueres(current_user):
     conn = getdb()
     cursor = conn.cursor()
-    cursor.execute("SELECT nome_hamburguer FROM hamburgueres")
+    cursor.execute("SELECT nome_hamburguer, imagem_url, ingredientes FROM hamburgueres")
     hamburgueres = cursor.fetchall()
     conn.close()
 
     if hamburgueres:
-        result = [hamburguer[0] for hamburguer in hamburgueres]
+        result = [
+            {
+                "nome": hamburguer[0],
+                "imagem_url": hamburguer[1],
+                "ingredientes": hamburguer[2],
+            }
+            for hamburguer in hamburgueres
+        ]
         return jsonify(result)
     else:
         return jsonify({"message": "Nenhum hambúrguer encontrado"}), 404
