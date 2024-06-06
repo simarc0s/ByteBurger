@@ -125,6 +125,55 @@ def add_pedido(current_user):
     return jsonify({"status": "success"}), 201
 
 
+# Rota para encontrar clientes pelo telefone
+@app.route("/clientes/<telefone>", methods=["GET"])
+@token_required
+def encontrar_cliente_por_telefone(current_user, telefone):
+    conn = getdb()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM clientes WHERE telefone = ?", (telefone,))
+    cliente = cursor.fetchone()
+    conn.close()
+
+    if cliente:
+        return jsonify(
+            {
+                "id_cliente": cliente[0],
+                "nome": cliente[1],
+                "morada": cliente[2],
+                "telefone": cliente[3],
+            }
+        )
+    else:
+        return jsonify({"message": "Cliente não encontrado"}), 404
+
+
+# Rota para encontrar clientes pelo nome
+@app.route("/clientes/nome/<nome>", methods=["GET"])
+@token_required
+def encontrar_cliente_por_nome(current_user, nome):
+    conn = getdb()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM clientes WHERE nome LIKE ?", ("%" + nome + "%",))
+    clientes = cursor.fetchall()
+    conn.close()
+
+    if clientes:
+        result = []
+        for cliente in clientes:
+            result.append(
+                {
+                    "id_cliente": cliente[0],
+                    "nome": cliente[1],
+                    "morada": cliente[2],
+                    "telefone": cliente[3],
+                }
+            )
+        return jsonify(result)
+    else:
+        return jsonify({"message": "Nenhum cliente encontrado com esse nome"}), 404
+
+
 # Função para calcular o valor total de um pedido
 def calcular_valor_total(nome_hamburguer, quantidade, tamanho):
     preco_base = 5.0
