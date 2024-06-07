@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS users (
 # Commit das alterações
 conn.commit()
 
-# Inserção de um usuário
+# Inserção de um utilizador
 try:
     cursor.execute(
         "INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)",
