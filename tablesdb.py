@@ -1,11 +1,10 @@
 import sqlite3
 
+
 # Função para recriar a tabela 'pedidos' com ON DELETE CASCADE
 def recriar_tabela_pedidos(cursor):
-    # Desativar temporariamente as restrições de chave estrangeira
     cursor.execute("PRAGMA foreign_keys = OFF")
-    
-    # Criar a nova tabela 'pedidos' com ON DELETE CASCADE
+
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS pedidos_new (
         id_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,27 +18,52 @@ def recriar_tabela_pedidos(cursor):
         FOREIGN KEY(nome_hamburguer) REFERENCES hamburgueres(nome_hamburguer) ON DELETE CASCADE
     );
     """)
-    
-    # Copiar os dados da tabela antiga 'pedidos' para a nova
+
     cursor.execute("INSERT INTO pedidos_new SELECT * FROM pedidos")
-    
-    # Eliminar a tabela antiga 'pedidos'
+
     cursor.execute("DROP TABLE pedidos")
-    
-    # Renomear a nova tabela para 'pedidos'
+
     cursor.execute("ALTER TABLE pedidos_new RENAME TO pedidos")
-    
-    # Reativar as restrições de chave estrangeira
+
     cursor.execute("PRAGMA foreign_keys = ON")
+
+
+# Função para adicionar a coluna imagem_url à tabela hamburgueres se não existir
+def adicionar_coluna_imagem_url(cursor):
+    cursor.execute("PRAGMA table_info(hamburgueres)")
+    columns = [column[1] for column in cursor.fetchall()]
+    if "imagem_url" not in columns:
+        cursor.execute("ALTER TABLE hamburgueres ADD COLUMN imagem_url TEXT")
+
+
+# Função para inserir dados de um cliente
+def inserir_cliente(cursor, nome, morada, telefone):
+    cursor.execute(
+        "INSERT INTO clientes (nome, morada, telefone) VALUES (?, ?, ?)",
+        (nome, morada, telefone),
+    )
+    return cursor.lastrowid
+
+
+# Função para inserir um pedido
+def inserir_pedido(
+    cursor, id_cliente, nome_hamburguer, quantidade, tamanho, valor_total
+):
+    cursor.execute(
+        """
+        INSERT INTO pedidos (id_cliente, nome_hamburguer, quantidade, tamanho, valor_total)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (id_cliente, nome_hamburguer, quantidade, tamanho, valor_total),
+    )
+
 
 # Conectar à base de dados
 conn = sqlite3.connect("database.db")
 cursor = conn.cursor()
 
-# Desativar temporariamente as restrições de chave estrangeira
 cursor.execute("PRAGMA foreign_keys = OFF")
 
-# Criar as tabelas se ainda não existirem
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS clientes (
     id_cliente INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,11 +76,14 @@ CREATE TABLE IF NOT EXISTS clientes (
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS hamburgueres (
     nome_hamburguer TEXT PRIMARY KEY,
-    ingredientes TEXT NOT NULL
+    ingredientes TEXT NOT NULL,
+    imagem_url TEXT
 );
 """)
 
-# Criar a tabela 'pedidos' inicial sem ON DELETE CASCADE
+# Adicionar a coluna imagem_url se não existir
+adicionar_coluna_imagem_url(cursor)
+
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS pedidos (
     id_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,52 +99,75 @@ CREATE TABLE IF NOT EXISTS pedidos (
 """)
 
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS empregados (
+CREATE TABLE IF NOT EXISTS users (
     id_empregado INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL
 );
 """)
 
-# Guardar (commit) as mudanças na base de dados
 conn.commit()
 
-# Inserir um utilizador na tabela 'empregados'
 try:
     cursor.execute(
-        "INSERT OR IGNORE INTO empregados (username, password) VALUES (?, ?)",
+        "INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)",
         ("user1", "password1"),
     )
 except sqlite3.IntegrityError:
     print("Erro ao inserir empregado. Username já existe.")
 
-# Inserir alguns hambúrgueres na tabela 'hamburgueres'
 hamburgueres = [
-    ("Big Tasty", "Pão, Carne, Alface, Tomate, Queijo"),
-    ("Big Mac", "Pão, Carne, Queijo, Alface, Carne, Pão"),
-    ("Mc Royal", "Pão, Tomate, Queijo, Cogumelos, Bacon"),
+    (
+        "Big-Tasty",
+        "Pão, Carne, Alface, Tomate, Queijo",
+        "Big-Tasty.png",
+    ),
+    (
+        "Big-Mac",
+        "Pão, Carne, Queijo, Alface, Carne, Pão",
+        "Big-Mac.png",
+    ),
+    (
+        "Mc-Royal",
+        "Pão, Tomate, Queijo, Cogumelos, Bacon",
+        "Mc-Royal.png",
+    ),
 ]
 
+# Verificação e inserção de hamburgueres
 for hamburguer in hamburgueres:
     try:
         cursor.execute(
-            "INSERT OR IGNORE INTO hamburgueres (nome_hamburguer, ingredientes) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO hamburgueres (nome_hamburguer, ingredientes, imagem_url) VALUES (?, ?, ?)",
             hamburguer,
         )
+        # Confirma se os dados foram inseridos
+        cursor.execute(
+            "SELECT * FROM hamburgueres WHERE nome_hamburguer = ?", (hamburguer[0],)
+        )
+        print(cursor.fetchone())
     except sqlite3.IntegrityError:
         print(f"Erro ao inserir hambúrguer: {hamburguer[0]} já existe.")
 
-# Guardar (commit) as mudanças na base de dados
 conn.commit()
 
-# Recriar a tabela 'pedidos' com ON DELETE CASCADE
+# Recriar a tabela pedidos com ON DELETE CASCADE
 recriar_tabela_pedidos(cursor)
 
-# Guardar (commit) as mudanças na base de dados
 conn.commit()
 
-# Reativar as restrições de chave estrangeira
 cursor.execute("PRAGMA foreign_keys = ON")
 
-# Fechar a conexão com a base de dados
+conn.commit()
+
+# Verificar se o cliente foi inserido corretamente
+cursor.execute("SELECT * FROM clientes")
+print(cursor.fetchall())
+
+# Verificar se o pedido foi inserido corretamente
+cursor.execute("SELECT * FROM pedidos")
+print(cursor.fetchall())
+
 conn.close()
+
+print("Banco de dados atualizado com sucesso.")
