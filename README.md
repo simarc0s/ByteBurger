@@ -29,7 +29,7 @@ O backend do projeto é desenvolvido em Flask e utiliza SQLite como banco de dad
 
 O frontend é uma aplicação gráfica desenvolvida com Kivy, que oferece uma interface amigável para interação com o servidor. As funcionalidades principais incluem:
 
-- **Interface de Usuário**: Tela para visualização e gerenciamento dos pedidos de hambúrgueres.
+- **Interface dos utilizadores**: Tela para visualização e gerenciamento dos pedidos de hambúrgueres.
 - **Interação com o Servidor**: Envia e recebe dados do servidor Flask utilizando a biblioteca Requests.
 - **Formulários de Entrada**: Permite que os utilizadores insiram, atualizem e removam pedidos através de formulários intuitivos.
 
@@ -41,7 +41,7 @@ Para iniciar o servidor, escreva no terminal o seguinte comando:
 
 ```sh
 python FlaskServer.py
-
+```
 
 ### Cliente
 
@@ -49,6 +49,7 @@ Para iniciar o cliente, escreva no terminal o seguinte comando:
 
 ```sh
 python main.py
+```
 
 ## Requisitos
 
@@ -56,3 +57,4 @@ Certifique-se de ter as seguintes bibliotecas instaladas:
 
 ```sh
 pip install Flask sqlite3 PyJWT kivy requests
+```
