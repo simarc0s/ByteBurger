@@ -16,8 +16,8 @@ class LoginForm(BoxLayout):
         super().__init__(**kwargs)
         self.orientation = "vertical"
 
-        # Campos de entrada para usuário e senha
-        self.add_widget(Label(text="Usuário"))
+        # Campos de entrada para utilizador e senha
+        self.add_widget(Label(text="Utilizador"))
         self.username_input = TextInput()
         self.add_widget(self.username_input)
 
@@ -50,7 +50,7 @@ class LoginForm(BoxLayout):
                 print("Falha no login. Código de estado:", response.status_code)
                 print("Resposta do servidor:", response.text)
                 # Exibe uma mensagem de erro caso o login falhe
-                self.show_error_message("Falha no login. Verifique usuário/senha.")
+                self.show_error_message("Falha no login. Verifique utilizador/senha.")
         except requests.ConnectionError:
             print("Falha na conexão com o servidor.")
             # Exibe uma mensagem de erro caso haja falha na conexão com o servidor
