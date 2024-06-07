@@ -64,6 +64,7 @@ cursor = conn.cursor()
 
 cursor.execute("PRAGMA foreign_keys = OFF")
 
+# Criação da tabela clientes se não existir
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS clientes (
     id_cliente INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,6 +74,7 @@ CREATE TABLE IF NOT EXISTS clientes (
 );
 """)
 
+# Criação da tabela hamburgueres se não existir
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS hamburgueres (
     nome_hamburguer TEXT PRIMARY KEY,
@@ -84,6 +86,7 @@ CREATE TABLE IF NOT EXISTS hamburgueres (
 # Adicionar a coluna imagem_url se não existir
 adicionar_coluna_imagem_url(cursor)
 
+# Criação da tabela pedidos se não existir
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS pedidos (
     id_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,6 +101,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
 );
 """)
 
+# Criação da tabela users se não existir
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     id_empregado INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,8 +110,10 @@ CREATE TABLE IF NOT EXISTS users (
 );
 """)
 
+# Commit das alterações
 conn.commit()
 
+# Inserção de um usuário
 try:
     cursor.execute(
         "INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)",
@@ -116,6 +122,7 @@ try:
 except sqlite3.IntegrityError:
     print("Erro ao inserir empregado. Username já existe.")
 
+# Dados dos hambúrgueres
 hamburgueres = [
     (
         "Big-Tasty",
@@ -134,7 +141,7 @@ hamburgueres = [
     ),
 ]
 
-# Verificação e inserção de hamburgueres
+# Verificação e inserção de hambúrgueres
 for hamburguer in hamburgueres:
     try:
         cursor.execute(
@@ -149,15 +156,18 @@ for hamburguer in hamburgueres:
     except sqlite3.IntegrityError:
         print(f"Erro ao inserir hambúrguer: {hamburguer[0]} já existe.")
 
+# Commit das alterações
 conn.commit()
 
 # Recriar a tabela pedidos com ON DELETE CASCADE
 recriar_tabela_pedidos(cursor)
 
+# Commit das alterações
 conn.commit()
 
 cursor.execute("PRAGMA foreign_keys = ON")
 
+# Commit das alterações
 conn.commit()
 
 # Verificar se o cliente foi inserido corretamente
@@ -168,6 +178,7 @@ print(cursor.fetchall())
 cursor.execute("SELECT * FROM pedidos")
 print(cursor.fetchall())
 
+# Fechar a conexão com o banco de dados
 conn.close()
 
 print("Banco de dados atualizado com sucesso.")
