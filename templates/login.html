@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>McDonald's — Login</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #DA291C;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      text-align: center;
+    }
+    .logo {
+      font-size: 3rem;
+      font-weight: 900;
+      color: #FFC72C;
+      text-shadow: 2px 2px 0 #DA291C;
+      margin-bottom: 0.25rem;
+    }
+    .subtitle {
+      color: #555;
+      font-size: 0.9rem;
+      margin-bottom: 1.8rem;
+    }
+    label {
+      display: block;
+      text-align: left;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 0.25rem;
+    }
+    input {
+      width: 100%;
+      padding: 0.65rem 0.9rem;
+      border: 1.5px solid #ddd;
+      border-radius: 7px;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      transition: border-color 0.2s;
+    }
+    input:focus { outline: none; border-color: #DA291C; }
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      background: #DA291C;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #b52115; }
+    .error {
+      margin-top: 1rem;
+      padding: 0.65rem;
+      background: #ffeaea;
+      border: 1px solid #f5c6c6;
+      border-radius: 7px;
+      color: #c0392b;
+      font-size: 0.85rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">M</div>
+    <p class="subtitle">Staff Order System</p>
+    <label for="username">Username</label>
+    <input type="text" id="username" placeholder="Enter your username" autocomplete="username" />
+    <label for="password">Password</label>
+    <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" />
+    <button onclick="doLogin()">Sign In</button>
+    <div class="error" id="error-msg"></div>
+  </div>
+
+  <script>
+    async function doLogin() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('error-msg');
+      errorEl.style.display = 'none';
+
+      if (!username || !password) {
+        showError('Please enter username and password.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // Store token in sessionStorage (cleared when tab is closed)
+          sessionStorage.setItem('token', data.token);
+          window.location.href = '/ui/orders';
+        } else {
+          showError('Invalid username or password.');
+        }
+      } catch (e) {
+        showError('Cannot reach the server. Make sure Flask is running.');
+      }
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('error-msg');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    // Allow Enter key to submit
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin();
+    });
+  </script>
+</body>
+</html>

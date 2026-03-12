@@ -1,7 +1,7 @@
 import sqlite3
 
 
-# Função para recriar a tabela 'pedidos' com ON DELETE CASCADE
+# Recreates the 'pedidos' table with ON DELETE CASCADE
 def recriar_tabela_pedidos(cursor):
     cursor.execute("PRAGMA foreign_keys = OFF")
 
@@ -28,7 +28,7 @@ def recriar_tabela_pedidos(cursor):
     cursor.execute("PRAGMA foreign_keys = ON")
 
 
-# Função para adicionar a coluna imagem_url à tabela hamburgueres se não existir
+# Adds the imagem_url column to the hamburgueres table if it does not exist
 def adicionar_coluna_imagem_url(cursor):
     cursor.execute("PRAGMA table_info(hamburgueres)")
     columns = [column[1] for column in cursor.fetchall()]
@@ -36,7 +36,7 @@ def adicionar_coluna_imagem_url(cursor):
         cursor.execute("ALTER TABLE hamburgueres ADD COLUMN imagem_url TEXT")
 
 
-# Função para inserir dados de um cliente
+# Inserts a customer record and returns the new row id
 def inserir_cliente(cursor, nome, morada, telefone):
     cursor.execute(
         "INSERT INTO clientes (nome, morada, telefone) VALUES (?, ?, ?)",
@@ -45,7 +45,7 @@ def inserir_cliente(cursor, nome, morada, telefone):
     return cursor.lastrowid
 
 
-# Função para inserir um pedido
+# Inserts an order record
 def inserir_pedido(
     cursor, id_cliente, nome_hamburguer, quantidade, tamanho, valor_total
 ):
@@ -58,13 +58,13 @@ def inserir_pedido(
     )
 
 
-# Conectar à base de dados
+# Connect to the database
 conn = sqlite3.connect("database.db")
 cursor = conn.cursor()
 
 cursor.execute("PRAGMA foreign_keys = OFF")
 
-# Criação da tabela clientes se não existir
+# Create the clientes table if it does not exist
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS clientes (
     id_cliente INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS clientes (
 );
 """)
 
-# Criação da tabela hamburgueres se não existir
+# Create the hamburgueres table if it does not exist
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS hamburgueres (
     nome_hamburguer TEXT PRIMARY KEY,
@@ -83,10 +83,10 @@ CREATE TABLE IF NOT EXISTS hamburgueres (
 );
 """)
 
-# Adicionar a coluna imagem_url se não existir
+# Add the imagem_url column if it does not already exist
 adicionar_coluna_imagem_url(cursor)
 
-# Criação da tabela pedidos se não existir
+# Create the pedidos table if it does not exist
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS pedidos (
     id_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
 );
 """)
 
-# Criação da tabela users se não existir
+# Create the users table if it does not exist
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     id_empregado INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,10 +110,10 @@ CREATE TABLE IF NOT EXISTS users (
 );
 """)
 
-# Commit das alterações
+# Commit table creation
 conn.commit()
 
-# Inserção de um utilizador
+# Insert a default user
 try:
     cursor.execute(
         "INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)",
@@ -122,7 +122,7 @@ try:
 except sqlite3.IntegrityError:
     print("Erro ao inserir empregado. Username já existe.")
 
-# Dados dos hambúrgueres
+# Burger seed data
 hamburgueres = [
     (
         "Big-Tasty",
@@ -141,44 +141,44 @@ hamburgueres = [
     ),
 ]
 
-# Verificação e inserção de hambúrgueres
+# Insert burgers (skip duplicates)
 for hamburguer in hamburgueres:
     try:
         cursor.execute(
             "INSERT OR IGNORE INTO hamburgueres (nome_hamburguer, ingredientes, imagem_url) VALUES (?, ?, ?)",
             hamburguer,
         )
-        # Confirma se os dados foram inseridos
+        # Verify the row was inserted
         cursor.execute(
             "SELECT * FROM hamburgueres WHERE nome_hamburguer = ?", (hamburguer[0],)
         )
         print(cursor.fetchone())
     except sqlite3.IntegrityError:
-        print(f"Erro ao inserir hambúrguer: {hamburguer[0]} já existe.")
+        print(f"Error inserting burger: {hamburguer[0]} already exists.")
 
-# Commit das alterações
+# Commit burger inserts
 conn.commit()
 
-# Recriar a tabela pedidos com ON DELETE CASCADE
+# Recreate the pedidos table with ON DELETE CASCADE
 recriar_tabela_pedidos(cursor)
 
-# Commit das alterações
+# Commit after table recreation
 conn.commit()
 
 cursor.execute("PRAGMA foreign_keys = ON")
 
-# Commit das alterações
+# Final commit
 conn.commit()
 
-# Verificar se o cliente foi inserido corretamente
+# Verify customers were inserted correctly
 cursor.execute("SELECT * FROM clientes")
 print(cursor.fetchall())
 
-# Verificar se o pedido foi inserido corretamente
+# Verify orders were inserted correctly
 cursor.execute("SELECT * FROM pedidos")
 print(cursor.fetchall())
 
-# Fechar a conexão com o banco de dados
+# Close the database connection
 conn.close()
 
-print("Banco de dados atualizado com sucesso.")
+print("Database updated successfully.")

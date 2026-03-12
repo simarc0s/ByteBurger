@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>McDonald's — New Order</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+    }
+    header {
+      background: #DA291C;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 2rem;
+    }
+    header .logo { font-size: 1.8rem; font-weight: 900; color: #FFC72C; }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+    header button {
+      background: transparent;
+      border: 1.5px solid #fff;
+      color: #fff;
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    header button:hover { background: rgba(255,255,255,0.15); }
+
+    .layout {
+      display: flex;
+      gap: 1.5rem;
+      padding: 1.5rem 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* ---- LEFT: Order Form ---- */
+    .form-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.5rem;
+      flex: 0 0 380px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      height: fit-content;
+    }
+    .form-card h2 { font-size: 1rem; color: #DA291C; margin-bottom: 1.2rem; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; color: #444; margin-bottom: 0.2rem; }
+    input, select {
+      width: 100%;
+      padding: 0.6rem 0.8rem;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 7px;
+      font-size: 0.95rem;
+      margin-bottom: 0.9rem;
+      background: #fafafa;
+    }
+    input:focus, select:focus { outline: none; border-color: #DA291C; background: #fff; }
+    .field-row { display: flex; gap: 0.75rem; }
+    .field-row > div { flex: 1; }
+
+    .burger-display {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 7px;
+      padding: 0.5rem 0.8rem;
+      margin-bottom: 0.9rem;
+      background: #fafafa;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      min-height: 52px;
+    }
+    .burger-display:hover { border-color: #DA291C; }
+    .burger-display img { width: 40px; height: 40px; object-fit: contain; border-radius: 4px; }
+    .burger-display span { color: #333; font-size: 0.95rem; }
+    .burger-display .placeholder { color: #aaa; font-size: 0.9rem; font-style: italic; }
+
+    .submit-btn {
+      width: 100%;
+      padding: 0.8rem;
+      background: #DA291C;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 0.3rem;
+    }
+    .submit-btn:hover { background: #b52115; }
+    .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+    .alert {
+      margin-top: 0.9rem;
+      padding: 0.65rem 0.9rem;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      display: none;
+    }
+    .alert.success { background: #eafaf1; border: 1px solid #a9dfbf; color: #1e8449; }
+    .alert.error   { background: #fdf2f2; border: 1px solid #f5c6c6; color: #c0392b; }
+
+    /* ---- RIGHT: Burger Catalogue ---- */
+    .catalogue {
+      flex: 1;
+    }
+    .catalogue h2 { font-size: 1rem; color: #333; margin-bottom: 1rem; }
+    .burger-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    .burger-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      text-align: center;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .burger-card:hover { border-color: #DA291C; transform: translateY(-2px); }
+    .burger-card.selected { border-color: #DA291C; background: #fff5f5; }
+    .burger-card img {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+      margin-bottom: 0.5rem;
+    }
+    .burger-card .name { font-weight: 700; font-size: 0.95rem; color: #222; }
+    .burger-card .ingredients { font-size: 0.75rem; color: #888; margin-top: 0.25rem; line-height: 1.4; }
+    .burger-card .price { font-size: 0.8rem; color: #DA291C; font-weight: 600; margin-top: 0.4rem; }
+
+    /* ---- Customer autocomplete ---- */
+    .autocomplete-wrapper { position: relative; }
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1.5px solid #e0e0e0;
+      border-top: none;
+      border-radius: 0 0 7px 7px;
+      max-height: 180px;
+      overflow-y: auto;
+      z-index: 99;
+      display: none;
+    }
+    .autocomplete-list div {
+      padding: 0.5rem 0.8rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .autocomplete-list div:hover { background: #fff0f0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">M</span>
+  <h1>New Order</h1>
+  <button onclick="logout()">Sign Out</button>
+</header>
+
+<div class="layout">
+
+  <!-- Order Form -->
+  <div class="form-card">
+    <h2>Order Details</h2>
+
+    <div class="autocomplete-wrapper">
+      <label for="nome">Customer Name</label>
+      <input type="text" id="nome" placeholder="Start typing a name..." oninput="searchCustomerByName()" autocomplete="off" />
+      <div class="autocomplete-list" id="name-list"></div>
+    </div>
+
+    <label for="morada">Address</label>
+    <input type="text" id="morada" placeholder="Customer address" />
+
+    <div class="autocomplete-wrapper">
+      <label for="telefone">Phone Number</label>
+      <input type="text" id="telefone" placeholder="Phone number" oninput="searchCustomerByPhone()" autocomplete="off" />
+      <div class="autocomplete-list" id="phone-list"></div>
+    </div>
+
+    <label>Burger</label>
+    <div class="burger-display" id="burger-display" onclick="scrollToCatalogue()">
+      <span class="placeholder" id="burger-display-text">Click a burger from the catalogue →</span>
+    </div>
+    <input type="hidden" id="nome_hamburguer" />
+
+    <div class="field-row">
+      <div>
+        <label for="quantidade">Quantity</label>
+        <input type="number" id="quantidade" value="1" min="1" max="20" />
+      </div>
+      <div>
+        <label for="tamanho">Size</label>
+        <select id="tamanho">
+          <option value="normal">Normal</option>
+          <option value="infantil">Infantil</option>
+          <option value="duplo">Duplo</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="submit-btn" onclick="submitOrder()">Register Order</button>
+    <div class="alert" id="alert"></div>
+  </div>
+
+  <!-- Burger Catalogue -->
+  <div class="catalogue">
+    <h2>Select a Burger</h2>
+    <div class="burger-grid" id="burger-grid">
+      <p style="color:#aaa; font-size:0.9rem;">Loading burgers…</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const TOKEN = sessionStorage.getItem('token');
+
+  // Redirect to login if no token is present
+  if (!TOKEN) window.location.href = '/ui/login';
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'x-access-tokens': TOKEN
+  };
+
+  let allCustomers = [];
+  let selectedBurger = null;
+
+  // ---- Startup ----
+  async function init() {
+    await loadBurgers();
+    await loadCustomers();
+  }
+
+  // ---- Burger catalogue ----
+  async function loadBurgers() {
+    try {
+      const res = await fetch('/hamburgueres', { headers });
+      if (res.status === 401 || res.status === 403) { logout(); return; }
+      const burgers = await res.json();
+      const grid = document.getElementById('burger-grid');
+      grid.innerHTML = '';
+      burgers.forEach(b => {
+        const card = document.createElement('div');
+        card.className = 'burger-card';
+        card.dataset.name = b.nome;
+        card.innerHTML = `
+          <img src="/static/images/${encodeURIComponent(b.imagem_url)}" alt="${b.nome}"
+               onerror="this.style.display='none'" />
+          <div class="name">${b.nome}</div>
+          <div class="ingredients">${b.ingredientes}</div>
+        `;
+        card.addEventListener('click', () => selectBurger(b, card));
+        grid.appendChild(card);
+      });
+    } catch (e) {
+      document.getElementById('burger-grid').innerHTML = '<p style="color:#e74c3c">Failed to load burgers.</p>';
+    }
+  }
+
+  function selectBurger(burger, cardEl) {
+    document.querySelectorAll('.burger-card').forEach(c => c.classList.remove('selected'));
+    cardEl.classList.add('selected');
+    selectedBurger = burger;
+    document.getElementById('nome_hamburguer').value = burger.nome;
+    const display = document.getElementById('burger-display');
+    display.innerHTML = `
+      <img src="/static/images/${encodeURIComponent(burger.imagem_url)}" alt="${burger.nome}"
+           onerror="this.style.display='none'" />
+      <span>${burger.nome}</span>
+    `;
+  }
+
+  function scrollToCatalogue() {
+    document.getElementById('burger-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ---- Customer autocomplete ----
+  async function loadCustomers() {
+    try {
+      const res = await fetch('/clientes', { headers });
+      if (res.ok) allCustomers = await res.json();
+    } catch (e) { /* non-critical */ }
+  }
+
+  function searchCustomerByName() {
+    const q = document.getElementById('nome').value.toLowerCase();
+    const list = document.getElementById('name-list');
+    if (!q) { list.style.display = 'none'; return; }
+    const matches = allCustomers.filter(c => c.nome.toLowerCase().includes(q));
+    renderAutocomplete(list, matches, c => {
+      document.getElementById('nome').value = c.nome;
+      document.getElementById('morada').value = c.morada;
+      document.getElementById('telefone').value = c.telefone;
+      list.style.display = 'none';
+    }, c => c.nome + ' — ' + c.telefone);
+  }
+
+  function searchCustomerByPhone() {
+    const q = document.getElementById('telefone').value;
+    const list = document.getElementById('phone-list');
+    if (!q) { list.style.display = 'none'; return; }
+    const matches = allCustomers.filter(c => c.telefone.includes(q));
+    renderAutocomplete(list, matches, c => {
+      document.getElementById('telefone').value = c.telefone;
+      document.getElementById('nome').value = c.nome;
+      document.getElementById('morada').value = c.morada;
+      list.style.display = 'none';
+    }, c => c.telefone + ' — ' + c.nome);
+  }
+
+  function renderAutocomplete(listEl, items, onSelect, label) {
+    listEl.innerHTML = '';
+    if (!items.length) { listEl.style.display = 'none'; return; }
+    items.slice(0, 8).forEach(item => {
+      const div = document.createElement('div');
+      div.textContent = label(item);
+      div.addEventListener('click', () => onSelect(item));
+      listEl.appendChild(div);
+    });
+    listEl.style.display = 'block';
+  }
+
+  // Hide autocomplete when clicking outside
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.autocomplete-wrapper')) {
+      document.querySelectorAll('.autocomplete-list').forEach(l => l.style.display = 'none');
+    }
+  });
+
+  // ---- Submit order ----
+  async function submitOrder() {
+    const btn = document.querySelector('.submit-btn');
+    const alertEl = document.getElementById('alert');
+    alertEl.style.display = 'none';
+
+    const nome = document.getElementById('nome').value.trim();
+    const morada = document.getElementById('morada').value.trim();
+    const telefone = document.getElementById('telefone').value.trim();
+    const nome_hamburguer = document.getElementById('nome_hamburguer').value;
+    const quantidade = document.getElementById('quantidade').value;
+    const tamanho = document.getElementById('tamanho').value;
+
+    if (!nome || !morada || !telefone || !nome_hamburguer) {
+      showAlert('Please fill in all fields and select a burger.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Registering…';
+
+    try {
+      const res = await fetch('/pedidos', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ nome_cliente: nome, morada, telefone, nome_hamburguer, quantidade, tamanho })
+      });
+      if (res.status === 201) {
+        showAlert('Order registered successfully!', 'success');
+        clearForm();
+        await loadCustomers(); // Refresh customer list in case a new one was added
+      } else if (res.status === 403) {
+        logout();
+      } else {
+        showAlert('Failed to register order. Please try again.', 'error');
+      }
+    } catch (e) {
+      showAlert('Cannot reach the server.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Register Order';
+    }
+  }
+
+  function clearForm() {
+    document.getElementById('nome').value = '';
+    document.getElementById('morada').value = '';
+    document.getElementById('telefone').value = '';
+    document.getElementById('quantidade').value = '1';
+    document.getElementById('tamanho').value = 'normal';
+    document.getElementById('nome_hamburguer').value = '';
+    document.getElementById('burger-display').innerHTML = '<span class="placeholder">Click a burger from the catalogue →</span>';
+    document.querySelectorAll('.burger-card').forEach(c => c.classList.remove('selected'));
+    selectedBurger = null;
+  }
+
+  function showAlert(msg, type) {
+    const el = document.getElementById('alert');
+    el.textContent = msg;
+    el.className = 'alert ' + type;
+    el.style.display = 'block';
+    if (type === 'success') setTimeout(() => el.style.display = 'none', 4000);
+  }
+
+  function logout() {
+    sessionStorage.removeItem('token');
+    window.location.href = '/ui/login';
+  }
+
+  init();
+</script>
+</body>
+</html>

@@ -1,45 +1,105 @@
 import datetime
+import os
 import sqlite3
 from functools import wraps
 
 import jwt
-from flask import Flask, jsonify, make_response, request
+from flask import Flask, jsonify, make_response, redirect, render_template, request, url_for
 
-# Inicializa a aplicação Flask e configura a chave secreta
+# --- 1. OPENTELEMETRY IMPORTS ---
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+# New: OTLP Exporter to send data to Docker
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
+from opentelemetry.sdk.resources import Resource
+# -----------------------------------
+
+# Initialize the Flask application and configure the secret key
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "secret_key"
+app.config["SECRET_KEY"] = os.getenv(
+    "SECRET_KEY",
+    "change-me-in-production-use-a-strong-secret-key-with-32-plus-bytes",
+)
 DATABASE = "database.db"
 
+# --- 2. OPENTELEMETRY SETUP ---
+# Give your service a clear name so it's easy to find in Grafana
+resource = Resource.create(
+    {"service.name": os.getenv("OTEL_SERVICE_NAME", "McDonalds-Backend-API")}
+)
+provider = TracerProvider(resource=resource)
+trace.set_tracer_provider(provider)
 
-# Função para obter a conexão com a base de dados SQLite
+# Point the exporter to the OTel Collector running in Docker on port 4317
+# NOTE: gRPC endpoint must be 'host:port' without the http:// scheme
+otlp_exporter = OTLPSpanExporter(
+    endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317"),
+    insecure=True,
+)
+processor = BatchSpanProcessor(otlp_exporter)
+provider.add_span_processor(processor)
+
+# Turn on automatic instrumentation for Flask and SQLite3
+FlaskInstrumentor().instrument_app(app)
+SQLite3Instrumentor().instrument()
+# ----------------------------------------
+
+if (
+    app.config["SECRET_KEY"]
+    == "change-me-in-production-use-a-strong-secret-key-with-32-plus-bytes"
+):
+    app.logger.warning(
+        "Using default SECRET_KEY. Set SECRET_KEY environment variable before production use."
+    )
+
+
+# Returns a new SQLite database connection
 def getdb():
     conn = sqlite3.connect(DATABASE)
     return conn
 
 
-# Decorador para exigir um token de autenticação nas rotas protegidas
+def require_json_fields(payload, required_fields):
+    """Returns an error response tuple if payload is invalid; otherwise None."""
+    if not payload:
+        return jsonify({"message": "Request body must be valid JSON"}), 400
+
+    missing = [field for field in required_fields if field not in payload]
+    if missing:
+        return jsonify({"message": f"Missing required fields: {', '.join(missing)}"}), 400
+
+    return None
+
+# Decorator that enforces JWT authentication on protected routes
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = request.headers.get("x-access-tokens")
         if not token:
-            return jsonify({"message": "Token está em falta!"}), 403
+            return jsonify({"message": "Token is missing!"}), 403
         try:
             data = jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
             current_user = data["username"]
         except jwt.ExpiredSignatureError:
-            return jsonify({"message": "Token expirou!"}), 403
+            return jsonify({"message": "Token has expired!"}), 403
         except jwt.InvalidTokenError:
-            return jsonify({"message": "Token inválido!"}), 403
+            return jsonify({"message": "Invalid token!"}), 403
         return f(current_user, *args, **kwargs)
 
     return decorated
 
 
-# Rota para fazer login e obter um token de autenticação
+# Route to log in and obtain a JWT authentication token
 @app.route("/login", methods=["POST"])
 def login():
     auth = request.get_json()
+    validation_error = require_json_fields(auth, ["username", "password"])
+    if validation_error:
+        return validation_error
+
     username = auth["username"]
     password = auth["password"]
 
@@ -54,26 +114,31 @@ def login():
 
     if not user:
         return make_response(
-            "Não foi possível verificar",
+            "Could not verify credentials",
             401,
-            {"WWW-Authenticate": 'Basic realm="Login requerido!"'},
+            {"WWW-Authenticate": 'Basic realm="Login required!"'},
         )
 
     token = jwt.encode(
         {
             "username": username,
-            "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=30),
+            "exp": datetime.datetime.now(datetime.UTC)
+            + datetime.timedelta(minutes=30),
         },
         app.config["SECRET_KEY"],
     )
     return jsonify({"token": token})
 
 
-# Rota para adicionar clientes, protegida por token
+# Route to add a new customer, protected by token
 @app.route("/clientes", methods=["POST"])
 @token_required
-def addcliente(current_user):
+def addcliente(_current_user):
     data = request.get_json()
+    validation_error = require_json_fields(data, ["nome", "morada", "telefone"])
+    if validation_error:
+        return validation_error
+
     conn = getdb()
     cursor = conn.cursor()
     cursor.execute(
@@ -82,15 +147,29 @@ def addcliente(current_user):
     )
     conn.commit()
     conn.close()
-    return jsonify({"status": "sucesso"}), 201
+    return jsonify({"status": "success"}), 201
 
 
-# Rota para adicionar pedidos, protegida por token
+# Route to add a new order, protected by token
 @app.route("/pedidos", methods=["POST"])
 @token_required
-def add_pedido(current_user):
+def add_pedido(_current_user):
     data = request.get_json()
-    app.logger.info(f"Dados recebidos: {data}")
+    validation_error = require_json_fields(
+        data,
+        [
+            "nome_cliente",
+            "morada",
+            "telefone",
+            "nome_hamburguer",
+            "quantidade",
+            "tamanho",
+        ],
+    )
+    if validation_error:
+        return validation_error
+
+    app.logger.info(f"Data received: {data}")
     conn = getdb()
     cursor = conn.cursor()
 
@@ -124,13 +203,13 @@ def add_pedido(current_user):
     )
     conn.commit()
     conn.close()
-    return jsonify({"status": "sucesso"}), 201
+    return jsonify({"status": "success"}), 201
 
 
-# Rota para encontrar clientes pelo telefone, protegida por token
+# Route to find a customer by phone number, protected by token
 @app.route("/clientes/<telefone>", methods=["GET"])
 @token_required
-def encontrar_cliente_por_telefone(current_user, telefone):
+def encontrar_cliente_por_telefone(_current_user, telefone):
     conn = getdb()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM clientes WHERE telefone = ?", (telefone,))
@@ -147,13 +226,13 @@ def encontrar_cliente_por_telefone(current_user, telefone):
             }
         )
     else:
-        return jsonify({"message": "Cliente não encontrado"}), 404
+        return jsonify({"message": "Customer not found"}), 404
 
 
-# Rota para encontrar clientes pelo nome, protegida por token
+# Route to find customers by name, protected by token
 @app.route("/clientes/nome/<nome>", methods=["GET"])
 @token_required
-def encontrar_cliente_por_nome(current_user, nome):
+def encontrar_cliente_por_nome(_current_user, nome):
     conn = getdb()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM clientes WHERE nome LIKE ?", ("%" + nome + "%",))
@@ -173,13 +252,13 @@ def encontrar_cliente_por_nome(current_user, nome):
             )
         return jsonify(result)
     else:
-        return jsonify({"message": "Nenhum cliente encontrado com esse nome"}), 404
+        return jsonify({"message": "No customers found with that name"}), 404
 
 
-# Rota para listar todos os clientes, protegida por token
+# Route to list all customers, protected by token
 @app.route("/clientes", methods=["GET"])
 @token_required
-def listar_todos_clientes(current_user):
+def listar_todos_clientes(_current_user):
     conn = getdb()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM clientes")
@@ -199,13 +278,13 @@ def listar_todos_clientes(current_user):
             )
         return jsonify(result)
     else:
-        return jsonify({"message": "Nenhum cliente encontrado"}), 404
+        return jsonify({"message": "No customers found"}), 404
 
 
-# Rota para listar todos os hambúrgueres, protegida por token
+# Route to list all burgers, protected by token
 @app.route("/hamburgueres", methods=["GET"])
 @token_required
-def listar_todos_hamburgueres(current_user):
+def listar_todos_hamburgueres(_current_user):
     conn = getdb()
     cursor = conn.cursor()
     cursor.execute("SELECT nome_hamburguer, imagem_url, ingredientes FROM hamburgueres")
@@ -223,16 +302,38 @@ def listar_todos_hamburgueres(current_user):
         ]
         return jsonify(result)
     else:
-        return jsonify({"message": "Nenhum hambúrguer encontrado"}), 404
+        return jsonify({"message": "No burgers found"}), 404
 
 
-# Função para calcular o valor total de um pedido
+# Calculates the total price of an order based on size multiplier
 def calcular_valor_total(nome_hamburguer, quantidade, tamanho):
     preco_base = 5.0
     multiplicador_tamanho = {"infantil": 0.75, "normal": 1.0, "duplo": 1.5}
     return preco_base * int(quantidade) * multiplicador_tamanho.get(tamanho, 1.0)
 
 
-# Inicializa o servidor Flask
+# --- WEB UI ROUTES ---
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"}), 200
+
+@app.route("/")
+def index():
+    # Redirect root to the login page
+    return redirect(url_for("ui_login"))
+
+@app.route("/ui/login")
+def ui_login():
+    return render_template("login.html")
+
+@app.route("/ui/orders")
+def ui_orders():
+    return render_template("orders.html")
+# ---------------------
+
+
+# Start the Flask development server
 if __name__ == "__main__":
     app.run(debug=True, host="127.0.0.1")
