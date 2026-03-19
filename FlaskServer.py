@@ -1,10 +1,14 @@
 import datetime
+import logging
 import os
 import sqlite3
+import time
 from functools import wraps
 
 import jwt
 from flask import Flask, jsonify, make_response, redirect, render_template, request, url_for
+from prometheus_client import Counter, Histogram, generate_latest
+from prometheus_client import CONTENT_TYPE_LATEST
 
 # --- 1. OPENTELEMETRY IMPORTS ---
 from opentelemetry import trace
@@ -17,6 +21,36 @@ from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.sdk.resources import Resource
 # -----------------------------------
 
+
+class TraceContextFilter(logging.Filter):
+    """Inject trace and span IDs into log records for correlation."""
+
+    def filter(self, record):
+        span = trace.get_current_span()
+        span_context = span.get_span_context()
+
+        if span_context and span_context.is_valid:
+            record.trace_id = format(span_context.trace_id, "032x")
+            record.span_id = format(span_context.span_id, "016x")
+        else:
+            record.trace_id = "-"
+            record.span_id = "-"
+
+        return True
+
+
+REQUEST_COUNT = Counter(
+    "http_server_requests_total",
+    "Total number of HTTP requests processed by Flask.",
+    ["method", "route", "status_code"],
+)
+
+REQUEST_LATENCY = Histogram(
+    "http_server_request_duration_seconds",
+    "HTTP request latency in seconds.",
+    ["method", "route"],
+)
+
 # Initialize the Flask application and configure the secret key
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv(
@@ -24,6 +58,19 @@ app.config["SECRET_KEY"] = os.getenv(
     "change-me-in-production-use-a-strong-secret-key-with-32-plus-bytes",
 )
 DATABASE = "database.db"
+
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter(
+        "%(asctime)s %(levelname)s [trace_id=%(trace_id)s span_id=%(span_id)s] %(message)s"
+    )
+)
+handler.addFilter(TraceContextFilter())
+
+app.logger.handlers.clear()
+app.logger.addHandler(handler)
+app.logger.setLevel(logging.INFO)
+app.logger.propagate = False
 
 # --- 2. OPENTELEMETRY SETUP ---
 # Give your service a clear name so it's easy to find in Grafana
@@ -46,6 +93,28 @@ provider.add_span_processor(processor)
 FlaskInstrumentor().instrument_app(app)
 SQLite3Instrumentor().instrument()
 # ----------------------------------------
+
+
+@app.before_request
+def start_request_timer():
+    request._start_time = time.perf_counter()
+
+
+@app.after_request
+def record_request_metrics(response):
+    route = request.url_rule.rule if request.url_rule else request.path
+    method = request.method
+    status_code = str(response.status_code)
+
+    REQUEST_COUNT.labels(method=method, route=route, status_code=status_code).inc()
+
+    start_time = getattr(request, "_start_time", None)
+    if start_time is not None:
+        REQUEST_LATENCY.labels(method=method, route=route).observe(
+            time.perf_counter() - start_time
+        )
+
+    return response
 
 if (
     app.config["SECRET_KEY"]
@@ -318,6 +387,11 @@ def calcular_valor_total(nome_hamburguer, quantidade, tamanho):
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"}), 200
+
+
+@app.route("/metrics", methods=["GET"])
+def metrics():
+    return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
 
 @app.route("/")
 def index():
