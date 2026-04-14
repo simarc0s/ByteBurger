@@ -99,7 +99,7 @@ Services:
 - Tempo: `http://localhost:3200` (distributed tracing API)
 - OTel Collector OTLP gRPC: `localhost:4317` (trace ingestion)
 - Prometheus: `http://localhost:9090` (metrics scraper)
-- Mimir: `http://localhost:9009` (long-term metrics storage backend)
+- Mimir: `http://localhost:9009/prometheus` (Prometheus-compatible query API and long-term metrics storage backend)
 - Loki: `http://localhost:3100` (log aggregation backend)
 - Promtail: log collector agent (no UI)
 

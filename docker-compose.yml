@@ -47,7 +47,6 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
-      - "--remote_write.url=http://mimir:9009/api/prom/push"
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-storage:/prometheus
@@ -66,7 +65,7 @@ services:
       - mimir-storage:/mimir-storage
     ports:
       - "9009:9009" # Mimir HTTP API
-      - "9010:9010" # Mimir gRPC
+      - "9011:9095" # Mimir gRPC
     environment:
       - LOG_LEVEL=info
 

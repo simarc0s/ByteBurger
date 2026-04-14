@@ -18,5 +18,5 @@ datasources:
   - name: Mimir
     type: prometheus
     uid: mimir
-    url: http://mimir:9009
+    url: http://mimir:9009/prometheus
     access: proxy
