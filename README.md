@@ -16,12 +16,12 @@ Note: the old Kivy frontend was removed due to Python 3.14 compatibility issues.
 
 ### Application
 
-- `FlaskServer.py`: REST API, authentication, order logic, and web routes
+- `app/FlaskServer.py`: REST API, authentication, order logic, and web routes
 - `templates/login.html`: login page
 - `templates/orders.html`: order creation page
 - `static/images/`: burger images
-- `database.db`: SQLite database
-- `tablesdb.py`: schema setup/migration and initial seed script
+- `data/database.db`: SQLite database
+- `app/tablesdb.py`: schema setup/migration and initial seed script
 
 ### Observability
 
@@ -50,7 +50,8 @@ Note: the old Kivy frontend was removed due to Python 3.14 compatibility issues.
 Install Python dependencies:
 
 ```sh
-pip install -r requirements.txt
+python -m venv .venv
+.venv\\Scripts\\python.exe -m pip install -r requirements.txt
 ```
 
 ## Environment Configuration (Optional)
@@ -74,7 +75,7 @@ $env:OTEL_EXPORTER_OTLP_ENDPOINT="localhost:4317"
 ### 1. Initialize the database (run once, or when you need a schema reset)
 
 ```sh
-python tablesdb.py
+.venv\\Scripts\\python.exe app/tablesdb.py
 ```
 
 Default seed credentials:
@@ -97,7 +98,7 @@ Services:
 ### 3. Start the Flask backend
 
 ```sh
-python FlaskServer.py
+.venv\\Scripts\\python.exe app/FlaskServer.py
 ```
 
 Application URLs:
@@ -122,7 +123,7 @@ To delete all orders and customers while keeping the schema and users:
 ```python
 import sqlite3
 
-conn = sqlite3.connect("database.db")
+conn = sqlite3.connect("data/database.db")
 cur = conn.cursor()
 cur.execute("DELETE FROM pedidos")
 cur.execute("DELETE FROM clientes")
@@ -147,18 +148,25 @@ This provides a solid distributed tracing baseline for development and troublesh
 
 ```text
 .
-|-- FlaskServer.py
-|-- tablesdb.py
-|-- database.db
+|-- app/
+|   |-- FlaskServer.py
+|   `-- tablesdb.py
+|-- data/
+|   `-- database.db
 |-- templates/
 |   |-- login.html
 |   `-- orders.html
 |-- static/
 |   `-- images/
 |-- docker-compose.yml
-|-- otel-collector-config.yaml
-|-- tempo-config.yaml
-|-- grafana-datasources.yaml
+|-- observability/
+|   |-- otel-collector-config.yaml
+|   |-- tempo-config.yaml
+|   |-- prometheus.yml
+|   `-- grafana/
+|       |-- datasources.yaml
+|       |-- dashboard-provisioning.yaml
+|       `-- dashboards/
 |-- requirements.txt
 `-- README.md
 ```

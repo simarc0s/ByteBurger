@@ -3,6 +3,7 @@ import logging
 import os
 import sqlite3
 import time
+from pathlib import Path
 from functools import wraps
 
 import jwt
@@ -52,12 +53,18 @@ REQUEST_LATENCY = Histogram(
 )
 
 # Initialize the Flask application and configure the secret key
-app = Flask(__name__)
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATABASE = BASE_DIR / "data" / "database.db"
+
+app = Flask(
+    __name__,
+    template_folder=str(BASE_DIR / "templates"),
+    static_folder=str(BASE_DIR / "static"),
+)
 app.config["SECRET_KEY"] = os.getenv(
     "SECRET_KEY",
     "change-me-in-production-use-a-strong-secret-key-with-32-plus-bytes",
 )
-DATABASE = "database.db"
 
 handler = logging.StreamHandler()
 handler.setFormatter(
@@ -127,7 +134,7 @@ if (
 
 # Returns a new SQLite database connection
 def getdb():
-    conn = sqlite3.connect(DATABASE)
+    conn = sqlite3.connect(str(DATABASE))
     return conn
 
 

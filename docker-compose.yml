@@ -4,7 +4,7 @@ services:
     image: otel/opentelemetry-collector:latest
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
-      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      - ./observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml
     ports:
       - "4317:4317" # OTLP gRPC port (Flask sends traces here)
       - "4318:4318" # OTLP HTTP port
@@ -16,7 +16,7 @@ services:
     image: grafana/tempo:2.4.1
     command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
-      - ./tempo-config.yaml:/etc/tempo.yaml
+      - ./observability/tempo-config.yaml:/etc/tempo.yaml
     ports:
       - "3200:3200" # Tempo HTTP API (used by Grafana)
       - "4319:4317" # Tempo OTLP gRPC ingest (from collector inside Docker)
@@ -26,9 +26,9 @@ services:
   grafana:
     image: grafana/grafana:latest
     volumes:
-      - ./grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
-      - ./grafana-dashboard-provisioning.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
-      - ./grafana-dashboards:/var/lib/grafana/dashboards
+      - ./observability/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./observability/grafana/dashboard-provisioning.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
@@ -45,6 +45,6 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"

@@ -1,4 +1,5 @@
 import sqlite3
+from pathlib import Path
 
 
 # Recreates the 'pedidos' table with ON DELETE CASCADE
@@ -59,7 +60,9 @@ def inserir_pedido(
 
 
 # Connect to the database
-conn = sqlite3.connect("database.db")
+BASE_DIR = Path(__file__).resolve().parent.parent
+DB_PATH = BASE_DIR / "data" / "database.db"
+conn = sqlite3.connect(str(DB_PATH))
 cursor = conn.cursor()
 
 cursor.execute("PRAGMA foreign_keys = OFF")
