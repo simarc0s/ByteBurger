@@ -38,13 +38,62 @@ services:
       - tempo
       - otel-collector
       - prometheus
+      - loki
+      - mimir
 
   # 4. Prometheus — scrapes app metrics from Flask /metrics endpoint
   prometheus:
     image: prom/prometheus:latest
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--remote_write.url=http://mimir:9009/api/prom/push"
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-storage:/prometheus
     ports:
       - "9090:9090"
+    depends_on:
+      - mimir
+
+  # 5. Mimir — long-term storage backend for Prometheus metrics
+  mimir:
+    image: grafana/mimir:latest
+    command: 
+      - "-config.file=/etc/mimir.yaml"
+    volumes:
+      - ./observability/mimir-config.yaml:/etc/mimir.yaml
+      - mimir-storage:/mimir-storage
+    ports:
+      - "9009:9009" # Mimir HTTP API
+      - "9010:9010" # Mimir gRPC
+    environment:
+      - LOG_LEVEL=info
+
+  # 6. Loki — log aggregation backend
+  loki:
+    image: grafana/loki:latest
+    command: 
+      - "-config.file=/etc/loki-config.yaml"
+    volumes:
+      - ./observability/loki-config.yaml:/etc/loki-config.yaml
+      - loki-storage:/loki
+    ports:
+      - "3100:3100" # Loki HTTP API
+
+  # 7. Promtail — log collector agent (collects logs and sends to Loki)
+  promtail:
+    image: grafana/promtail:latest
+    command:
+      - -config.file=/etc/promtail-config.yaml
+    volumes:
+      - ./observability/promtail-config.yaml:/etc/promtail-config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - loki
+
+volumes:
+  prometheus-storage:
+  mimir-storage:
+  loki-storage:

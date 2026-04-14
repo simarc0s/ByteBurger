@@ -8,7 +8,7 @@ This project is a web application for burger order management, built with:
 - SQLite database
 - Web frontend (HTML/CSS/JavaScript) served by Flask
 - JWT authentication
-- Observability using OpenTelemetry + OTel Collector + Tempo + Grafana
+- Observability using OpenTelemetry + OTel Collector + Tempo + Prometheus + Grafana + Loki + Mimir
 
 Note: the old Kivy frontend was removed due to Python 3.14 compatibility issues.
 
@@ -28,7 +28,11 @@ Note: the old Kivy frontend was removed due to Python 3.14 compatibility issues.
 - Flask exports OTLP gRPC traces to `localhost:4317`
 - OTel Collector receives traces on `4317/4318` and forwards them to Tempo
 - Tempo stores traces and exposes its HTTP API on `3200`
-- Grafana connects to Tempo for trace exploration
+- Prometheus scrapes metrics from Flask `/metrics` endpoint on `9090`
+- Mimir provides long-term storage backend for Prometheus metrics on `9009`
+- Loki aggregates and stores logs from all containers (`3100`)
+- Promtail is a log collector agent that sends logs to Loki
+- Grafana connects to Tempo (traces), Prometheus (metrics), Loki (logs), and Mimir (historical metrics)
 
 ## Features
 
@@ -45,7 +49,7 @@ Note: the old Kivy frontend was removed due to Python 3.14 compatibility issues.
 ## Requirements
 
 - Python 3.14+
-- Docker Desktop (for Grafana, Tempo, and OTel Collector)
+- Docker Desktop (for Grafana, Tempo, OTel Collector, Prometheus, Mimir, Loki, and Promtail)
 
 Install Python dependencies:
 
@@ -91,9 +95,13 @@ docker compose up -d
 
 Services:
 
-- Grafana: `http://localhost:3000`
-- Tempo API: `http://localhost:3200`
-- OTel Collector OTLP gRPC: `localhost:4317`
+- Grafana: `http://localhost:3000` (unified observability dashboard)
+- Tempo: `http://localhost:3200` (distributed tracing API)
+- OTel Collector OTLP gRPC: `localhost:4317` (trace ingestion)
+- Prometheus: `http://localhost:9090` (metrics scraper)
+- Mimir: `http://localhost:9009` (long-term metrics storage backend)
+- Loki: `http://localhost:3100` (log aggregation backend)
+- Promtail: log collector agent (no UI)
 
 ### 3. Start the Flask backend
 
@@ -112,9 +120,11 @@ Application URLs:
 1. Open `http://127.0.0.1:5000/ui/login` and log in with `user1/password1`.
 2. Create an order in the UI.
 3. Open Grafana at `http://localhost:3000`.
-4. Go to `Explore` and select the `tempo` datasource.
-5. Search for recent traces from service `McDonalds-Backend-API`.
-6. Confirm spans such as `POST /login`, `POST /pedidos`, and `GET /clientes`.
+4. Go to `Explore` panel to see multiple data sources:
+   - **Tempo**: Search for recent traces from service `McDonalds-Backend-API` (spans like `POST /login`, `POST /pedidos`, `GET /clientes`)
+   - **Prometheus**: View real-time metrics (CPU, memory, request rates)
+   - **Mimir**: Query historical metrics from Prometheus
+   - **Loki**: Stream and search container logs from the observability stack
 
 ## Clear Database Data
 
@@ -132,17 +142,18 @@ conn.commit()
 conn.close()
 ```
 
-## Base Observability Status
+## Observability Stack Status
 
-Yes. Base observability is implemented and working:
+**Complete observability suite implemented and working:**
 
-- Flask instrumentation is active
-- SQLite3 instrumentation is active
-- OTLP export to the Collector is active
-- Collector -> Tempo pipeline is active
-- Traces are visible in Grafana
+- ✅ Distributed tracing: Flask instrumentation + OTel Collector → Tempo (OTLP gRPC/HTTP)
+- ✅ Real-time metrics: Prometheus scraping Flask `/metrics` endpoint
+- ✅ Long-term metrics storage: Mimir backend for Prometheus data retention (8760 hours = 1 year)
+- ✅ Log aggregation: Promtail collecting container logs → Loki central storage
+- ✅ SQLite3 instrumentation: Database queries traced and exported
+- ✅ Unified observability UI: Grafana with 4 datasources (Tempo, Prometheus, Mimir, Loki)
 
-This provides a solid distributed tracing baseline for development and troubleshooting.
+This provides enterprise-grade observability for development, staging, and production environments.
 
 ## Project Structure
 
@@ -162,6 +173,9 @@ This provides a solid distributed tracing baseline for development and troublesh
 |-- observability/
 |   |-- otel-collector-config.yaml
 |   |-- tempo-config.yaml
+|   |-- loki-config.yaml
+|   |-- mimir-config.yaml
+|   |-- promtail-config.yaml
 |   |-- prometheus.yml
 |   `-- grafana/
 |       |-- datasources.yaml

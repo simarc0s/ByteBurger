@@ -1,0 +1,44 @@
+server:
+  http_listen_port: 9009
+  grpc_listen_port: 9010
+  log_level: info
+
+distributor:
+  ring:
+    kvstore:
+      store: inmemory
+  rate_limit_enabled: true
+
+ingester:
+  ring:
+    kvstore:
+      store: inmemory
+    replication_factor: 1
+  lifecycler:
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+
+blocks_storage:
+  backend: filesystem
+  filesystem:
+    dir: /mimir-storage/data
+
+storage:
+  engine: blocks
+
+limits:
+  enforce_metric_name: false
+  reject_old_samples: true
+  reject_old_samples_max_age: 8760h
+
+schema:
+  configs:
+    - from: 2024-01-01
+      schema: v12
+      index:
+        prefix: index_
+        period: 24h
+      object_store: filesystem
+      store: blocks
