@@ -1,99 +1,86 @@
-# Alarmes Simples - Guia de Utilização
+# Simple Alerts - Usage Guide
 
-## Alarmes Configurados
+## Configured Alerts
 
-### 1. **HighErrorRate** ⚠️ WARNING
-- **Condição**: Taxa de erro > 5% durante 2 minutos
-- **O que fazer**: Verificar logs na aba "Logs" do Grafana
-- **Causa comum**: Credenciais inválidas, DB offline
+### 1. HighErrorRate (WARNING)
+- Condition: Error rate > 5% for 2 minutes.
+- What to do: Check logs in Grafana (Loki).
+- Common causes: Invalid credentials, database issues, bad client payloads.
 
-### 2. **HighLatency** ⚠️ WARNING
-- **Condição**: P95 latência > 500ms durante 2 minutos
-- **O que fazer**: Verificar performance em Mimir dashboard
-- **Causa comum**: DB lento, muita concorrência
+### 2. HighLatency (WARNING)
+- Condition: P95 latency > 500ms for 2 minutes.
+- What to do: Check request duration metrics and database performance.
+- Common causes: Slow queries, high concurrency, resource saturation.
 
-### 3. **ServiceDown** 🔴 CRITICAL
-- **Condição**: Flask /health endpoint não responde durante 1 minuto
-- **O que fazer**: Reiniciar Docker container `docker compose restart flask-app`
-- **Causa comum**: App crashed, porta bloqueada
+### 3. ServiceDown (CRITICAL)
+- Condition: Flask /health endpoint is down for 1 minute.
+- What to do: Restart services and inspect container logs.
+- Common causes: App crash, port conflicts, startup failures.
 
-### 4. **HighMemoryUsage** ⚠️ WARNING
-- **Condição**: Memória > 500MB durante 2 minutos
-- **O que fazer**: Restart da app ou otimizar queries
-- **Causa comum**: Memory leak, muitas conexões DB abertas
+### 4. HighMemoryUsage (WARNING)
+- Condition: Process memory > 500MB for 2 minutes.
+- What to do: Review workload and restart app if needed.
+- Common causes: Memory leak, heavy load, too many open resources.
 
----
+## Email Notification Setup
 
-## Como Configurar Notificações por Email
+### Step 1: Configure SMTP settings
 
-### Passo 1: Configurar SMTP e destinatário no Docker Compose
-
-Abre PowerShell e executa:
+Run in PowerShell:
 
 ```powershell
-$env:EMAIL_ALERT_TO = "teu.email@empresa.com"
-$env:GF_SMTP_HOST = "smtp.office365.com:587"
-$env:GF_SMTP_USER = "teu.email@empresa.com"
-$env:GF_SMTP_PASSWORD = "APP_PASSWORD_OU_PASSWORD_SMTP"
-$env:GF_SMTP_FROM_ADDRESS = "teu.email@empresa.com"
+$env:EMAIL_ALERT_TO = "simao.bmarcos@gmail.com"
+$env:GF_SMTP_HOST = "smtp.gmail.com:587"
+$env:GF_SMTP_USER = "simao.bmarcos@gmail.com"
+$env:GF_SMTP_PASSWORD = "YOUR_GMAIL_APP_PASSWORD"
+$env:GF_SMTP_FROM_ADDRESS = "simao.bmarcos@gmail.com"
 docker compose up -d
 ```
 
-### Passo 2: Testar
+### Step 2: Validate notifications
 
-1. Abre Grafana em http://3000/alerts
-2. Vai aparecer a notificação **"Email Alerts"** como notification channel
-3. Quando houver um alerta, recebes o email automaticamente
+1. Open Grafana at http://localhost:3000.
+2. Open Alertmanager at http://localhost:9093.
+3. Trigger an alert and check your inbox/spam folder.
 
----
+## Where To Check Alerts
 
-## Onde Ver os Alarmes
+### Grafana
+- http://localhost:3000/alerting/list: Notification history and alert state.
 
-### No Grafana:
-- **http://localhost:3000/alerts** - Estado de todos os alertas
-- **http://localhost:3000/alerting/list** - Histórico de notificações
+### Prometheus
+- http://localhost:9090/alerts: Rule evaluation and firing state.
 
-### No Prometheus:
-- **http://localhost:9090/alerts** - Regras de alerta atibas e firing
+### Alertmanager
+- http://localhost:9093: Active alerts and receiver routing.
 
----
+## Edit Alert Thresholds
 
-## Exemplos de Notificação Teams
+1. Edit observability/prometheus-rules.yml.
+2. Update thresholds (example: 0.05 to 0.10 for 10% error rate).
+3. Restart Prometheus:
 
-Quando um alerta dispara, recebes uma mensagem como:
-
+```powershell
+docker compose restart prometheus
 ```
-🔴 ALERT: ServiceDown
-Severity: CRITICAL
-Summary: McDonalds API Service Down
-Description: Flask API is not responding to health checks
-
-Start: 2026-04-21 14:30:00
-Duration: 1 minute
-```
-
----
-
-## Desativar/Editar Alarmes
-
-Se quiseres mudar thresholds:
-
-1. Edita `observability/prometheus-rules.yml`
-2. Muda o valor (ex: `> 0.05` para `> 0.10` para 10% error rate)
-3. Executa `docker compose restart prometheus`
-
----
 
 ## Troubleshooting
 
-**Alarmes não aparecem no Grafana?**
-- Reinicia: `docker compose restart prometheus grafana`
-- Verifica: `docker compose logs prometheus`
+If alerts do not appear:
+- Restart services:
 
-**Email não recebe notificações?**
-- Verifica SMTP user/password
-- Verifica caixa de spam
-- Verifica logs: `docker compose logs grafana`
+```powershell
+docker compose restart prometheus alertmanager grafana
+```
 
-**Muitos falsos positivos?**
-- Aumenta o tempo de `for` em prometheus-rules.yml (ex: `for: 5m` em vez de `for: 2m`)
+- Check logs:
+
+```powershell
+docker compose logs prometheus
+docker compose logs alertmanager
+```
+
+If email does not arrive:
+- Verify SMTP user/password.
+- Verify Gmail App Password is used (not your normal password).
+- Check Inbox, Spam, and Promotions folders.

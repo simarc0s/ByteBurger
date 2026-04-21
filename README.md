@@ -32,7 +32,10 @@ Note: the old Kivy frontend was removed due to Python 3.14 compatibility issues.
 - Mimir provides long-term storage backend for Prometheus metrics on `9009`
 - Loki aggregates and stores logs from all containers (`3100`)
 - Promtail is a log collector agent that sends logs to Loki
+- Alertmanager routes Prometheus alerts to email notifications
 - Grafana connects to Tempo (traces), Prometheus (metrics), Loki (logs), and Mimir (historical metrics)
+
+For this local setup, S3 is not required. Tempo, Loki, and Mimir run with local Docker volumes.
 
 ## Features
 
@@ -99,6 +102,7 @@ Services:
 - Tempo: `http://localhost:3200` (distributed tracing API)
 - OTel Collector OTLP gRPC: `localhost:4317` (trace ingestion)
 - Prometheus: `http://localhost:9090` (metrics scraper)
+- Alertmanager: `http://localhost:9093` (alert routing and notifications)
 - Mimir: `http://localhost:9009/prometheus` (Prometheus-compatible query API and long-term metrics storage backend)
 - Loki: `http://localhost:3100` (log aggregation backend)
 - Promtail: log collector agent (no UI)
@@ -150,8 +154,22 @@ conn.close()
 - ✅ Real-time metrics: Prometheus scraping Flask `/metrics` endpoint
 - ✅ Long-term metrics storage: Mimir backend for Prometheus data retention (8760 hours = 1 year)
 - ✅ Log aggregation: Promtail collecting container logs → Loki central storage
+- ✅ Alerting and notifications: Prometheus rules + Alertmanager email delivery
 - ✅ SQLite3 instrumentation: Database queries traced and exported
 - ✅ Unified observability UI: Grafana with 4 datasources (Tempo, Prometheus, Mimir, Loki)
+
+## Alerting And Email Notifications
+
+- Alert rules are defined in `observability/prometheus-rules.yml`
+- Prometheus forwards alerts to Alertmanager (`observability/prometheus.yml`)
+- Alertmanager email receiver is configured in `observability/alertmanager.yml`
+- Grafana notifier provisioning is configured in `observability/grafana/notification-channels.yaml`
+- Full usage guide: `ALARMES.md`
+
+Gmail SMTP note:
+
+- Use a Gmail App Password (not your normal account password)
+- Required values are already wired in `docker-compose.yml` and can be overridden with env vars
 
 This provides enterprise-grade observability for development, staging, and production environments.
 
@@ -171,16 +189,20 @@ This provides enterprise-grade observability for development, staging, and produ
 |   `-- images/
 |-- docker-compose.yml
 |-- observability/
+|   |-- alertmanager.yml
 |   |-- otel-collector-config.yaml
 |   |-- tempo-config.yaml
 |   |-- loki-config.yaml
 |   |-- mimir-config.yaml
 |   |-- promtail-config.yaml
 |   |-- prometheus.yml
+|   |-- prometheus-rules.yml
 |   `-- grafana/
 |       |-- datasources.yaml
 |       |-- dashboard-provisioning.yaml
+|       |-- notification-channels.yaml
 |       `-- dashboards/
 |-- requirements.txt
+|-- ALARMES.md
 `-- README.md
 ```

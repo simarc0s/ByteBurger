@@ -9,4 +9,4 @@ notifiers:
     send_reminder: true
     frequency: "1h"
     settings:
-      addresses: "${EMAIL_ALERT_TO}"
+      addresses: "simao.bmarcos@gmail.com"
