@@ -32,9 +32,11 @@ services:
       - ./observability/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
       - ./observability/grafana/dashboard-provisioning.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./observability/grafana/notification-channels.yaml:/etc/grafana/provisioning/notifiers/notification-channels.yaml
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-https://outlook.webhook.office.com/webhookb2/teams-webhook-placeholder}
     ports:
       - "3000:3000"
     depends_on:
@@ -52,6 +54,7 @@ services:
       - "--storage.tsdb.path=/prometheus"
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./observability/prometheus-rules.yml:/etc/prometheus/prometheus-rules.yml
       - prometheus-storage:/prometheus
     ports:
       - "9090:9090"
