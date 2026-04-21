@@ -130,6 +130,22 @@ Application URLs:
    - **Mimir**: Query historical metrics from Prometheus
    - **Loki**: Stream and search container logs from the observability stack
 
+## Load Test And Live Alerts
+
+To generate enough traffic for the graphs and alerts, run the stack and then execute:
+
+```powershell
+.venv\Scripts\python.exe scripts/load_test.py --duration 120 --concurrency 12 --error-ratio 0.25
+```
+
+While the script is running, keep these pages open:
+
+- Grafana dashboard: `http://localhost:3000`
+- Grafana alerting: `http://localhost:3000/alerting/list`
+- Prometheus alerts: `http://localhost:9090/alerts`
+
+This combination shows request rate, latency, memory usage, and the alert state changing in real time.
+
 ## Clear Database Data
 
 To delete all orders and customers while keeping the schema and users:
