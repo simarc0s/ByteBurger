@@ -118,8 +118,9 @@
       "targets": [
         {
           "datasource": {"type": "tempo", "uid": "tempo"},
-          "expr": "type(\"traces\") && resource.service.name=\"McDonalds-Backend-API\"",
-          "legendFormat": "{{span.name}}",
+          "query": "{ resource.service.name = \"McDonalds-Backend-API\" }",
+          "queryType": "traceql",
+          "tableType": "traces",
           "refId": "A"
         }
       ],

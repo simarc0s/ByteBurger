@@ -8,7 +8,8 @@ from functools import wraps
 
 import jwt
 from flask import Flask, jsonify, make_response, redirect, render_template, request, url_for
-from prometheus_client import Counter, Histogram, generate_latest
+import psutil
+from prometheus_client import Counter, Gauge, Histogram, generate_latest
 from prometheus_client import CONTENT_TYPE_LATEST
 
 # --- 1. OPENTELEMETRY IMPORTS ---
@@ -50,6 +51,11 @@ REQUEST_LATENCY = Histogram(
     "http_server_request_duration_seconds",
     "HTTP request latency in seconds.",
     ["method", "route"],
+)
+
+PROCESS_MEMORY_BYTES = Gauge(
+    "process_resident_memory_bytes",
+    "Resident memory used by the Flask process in bytes.",
 )
 
 # Initialize the Flask application and configure the secret key
@@ -112,6 +118,8 @@ def record_request_metrics(response):
     route = request.url_rule.rule if request.url_rule else request.path
     method = request.method
     status_code = str(response.status_code)
+
+    PROCESS_MEMORY_BYTES.set(psutil.Process(os.getpid()).memory_info().rss)
 
     REQUEST_COUNT.labels(method=method, route=route, status_code=status_code).inc()
 
@@ -398,6 +406,7 @@ def health():
 
 @app.route("/metrics", methods=["GET"])
 def metrics():
+    PROCESS_MEMORY_BYTES.set(psutil.Process(os.getpid()).memory_info().rss)
     return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
 
 @app.route("/")
@@ -417,4 +426,6 @@ def ui_orders():
 
 # Start the Flask development server
 if __name__ == "__main__":
-    app.run(debug=True, host="127.0.0.1")
+    import tablesdb  # noqa: F401
+
+    app.run(host="0.0.0.0", port=5000, debug=False)

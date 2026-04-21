@@ -5,6 +5,9 @@ services:
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - ./observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    environment:
+      - DT_OTLP_ENDPOINT=${DT_OTLP_ENDPOINT:-https://dynatrace.invalid/api/v2/otlp}
+      - DT_API_TOKEN=${DT_API_TOKEN:-invalid-token}
     ports:
       - "4317:4317" # OTLP gRPC port (Flask sends traces here)
       - "4318:4318" # OTLP HTTP port

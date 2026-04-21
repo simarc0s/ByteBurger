@@ -5,6 +5,13 @@ receivers:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: flask_app
+          scrape_interval: 5s
+          static_configs:
+            - targets: ["host.docker.internal:5000"]
 
 exporters:
   # Use explicit otlp_grpc exporter to Tempo
@@ -12,9 +19,16 @@ exporters:
     endpoint: tempo:4317 # Send traces to the Tempo backend
     tls:
       insecure: true
+  otlp_http/dynatrace:
+    endpoint: ${env:DT_OTLP_ENDPOINT}
+    headers:
+      Authorization: Api-Token ${env:DT_API_TOKEN}
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [otlp_grpc/tempo]
+      exporters: [otlp_grpc/tempo, otlp_http/dynatrace]
+    metrics:
+      receivers: [prometheus]
+      exporters: [otlp_http/dynatrace]
