@@ -24,30 +24,26 @@
 
 ---
 
-## Como Configurar Notificações Teams
+## Como Configurar Notificações por Email
 
-### Passo 1: Criar Incoming Webhook no Teams
-
-1. Abre o teu Team no Microsoft Teams
-2. Clica em **⋯ (Mais opções)** → **Conectores**
-3. Procura "Incoming Webhook" e clica **Configurar**
-4. Dá um nome: `McDonalds Alerts`
-5. **Copia a URL do webhook** (parece com: `https://outlook.webhook.office.com/webhookb2/...`)
-
-### Passo 2: Configurar no Docker Compose
+### Passo 1: Configurar SMTP e destinatário no Docker Compose
 
 Abre PowerShell e executa:
 
 ```powershell
-$env:TEAMS_WEBHOOK_URL = "https://outlook.webhook.office.com/webhookb2/xxxx"
+$env:EMAIL_ALERT_TO = "teu.email@empresa.com"
+$env:GF_SMTP_HOST = "smtp.office365.com:587"
+$env:GF_SMTP_USER = "teu.email@empresa.com"
+$env:GF_SMTP_PASSWORD = "APP_PASSWORD_OU_PASSWORD_SMTP"
+$env:GF_SMTP_FROM_ADDRESS = "teu.email@empresa.com"
 docker compose up -d
 ```
 
-### Passo 3: Testar
+### Passo 2: Testar
 
 1. Abre Grafana em http://3000/alerts
-2. Vai aparecer a notificação **"Teams"** como notification channel
-3. Quando houver um alerta, recebes a mensagem automaticamente
+2. Vai aparecer a notificação **"Email Alerts"** como notification channel
+3. Quando houver um alerta, recebes o email automaticamente
 
 ---
 
@@ -94,9 +90,10 @@ Se quiseres mudar thresholds:
 - Reinicia: `docker compose restart prometheus grafana`
 - Verifica: `docker compose logs prometheus`
 
-**Teams não recebe notificações?**
-- Verifica se TEAMS_WEBHOOK_URL está correta
-- Tenta manualmente: `curl -X POST $env:TEAMS_WEBHOOK_URL -d '{"text":"Test Alert"}'`
+**Email não recebe notificações?**
+- Verifica SMTP user/password
+- Verifica caixa de spam
+- Verifica logs: `docker compose logs grafana`
 
 **Muitos falsos positivos?**
 - Aumenta o tempo de `for` em prometheus-rules.yml (ex: `for: 5m` em vez de `for: 2m`)
