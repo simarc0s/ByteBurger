@@ -13,6 +13,12 @@ receivers:
           static_configs:
             - targets: ["host.docker.internal:5000"]
 
+processors:
+  cumulativetodelta:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
 exporters:
   # Use explicit otlp_grpc exporter to Tempo
   otlp_grpc/tempo:
@@ -23,12 +29,24 @@ exporters:
     endpoint: ${env:DT_OTLP_ENDPOINT}
     headers:
       Authorization: Api-Token ${env:DT_API_TOKEN}
+    timeout: 30s
+    sending_queue:
+      enabled: true
+      num_consumers: 8
+      queue_size: 20000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 2s
+      max_interval: 30s
+      max_elapsed_time: 300s
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
+      processors: [batch]
       exporters: [otlp_grpc/tempo, otlp_http/dynatrace]
     metrics:
       receivers: [prometheus]
+      processors: [cumulativetodelta, batch]
       exporters: [otlp_http/dynatrace]

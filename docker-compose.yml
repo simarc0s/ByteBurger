@@ -1,7 +1,7 @@
 services:
   # 1. The OTel Collector — receives traces from the app and forwards them to Tempo
   otel-collector:
-    image: otel/opentelemetry-collector:latest
+    image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - ./observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml
