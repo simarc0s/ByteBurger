@@ -103,8 +103,8 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "mimir"},
-          "expr": "avg(http_server_requests_total) > 0",
-          "legendFormat": "Requests",
+          "expr": "sum(rate(http_server_requests_total[5m]))",
+          "legendFormat": "Requests per second",
           "refId": "A"
         }
       ],

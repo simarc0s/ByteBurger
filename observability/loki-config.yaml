@@ -5,10 +5,6 @@ server:
 
 common:
   path_prefix: /loki
-  storage:
-    filesystem:
-      chunks_directory: /loki/chunks
-      rules_directory: /loki/rules
   ring:
     instance_addr: 127.0.0.1
     kvstore:
@@ -19,13 +15,20 @@ schema_config:
   configs:
     - from: 2020-05-15
       store: tsdb
-      object_store: filesystem
+      object_store: s3
       schema: v13
       index:
         prefix: index_
         period: 24h
 
 storage_config:
+  aws:
+    endpoint: minio:9000
+    bucketnames: loki-logs
+    access_key_id: minioadmin
+    secret_access_key: minioadmin
+    s3forcepathstyle: true
+    insecure: true
   tsdb_shipper:
     active_index_directory: /loki/index
     cache_location: /loki/index_cache

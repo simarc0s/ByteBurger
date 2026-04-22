@@ -32,10 +32,11 @@ Note: the old Kivy frontend was removed due to Python 3.14 compatibility issues.
 - Mimir provides long-term storage backend for Prometheus metrics on `9009`
 - Loki aggregates and stores logs from all containers (`3100`)
 - Promtail is a log collector agent that sends logs to Loki
+- MinIO provides S3-compatible object storage for Loki and Tempo (internal Docker network)
 - Alertmanager routes Prometheus alerts to email notifications
 - Grafana connects to Tempo (traces), Prometheus (metrics), Loki (logs), and Mimir (historical metrics)
 
-For this local setup, S3 is not required. Tempo, Loki, and Mimir run with local Docker volumes.
+In this local setup, Loki and Tempo store data in MinIO buckets (`loki-logs`, `tempo-traces`) so the architecture is already compatible with real S3 providers.
 
 ## Features
 
@@ -106,6 +107,21 @@ Services:
 - Mimir: `http://localhost:9009/prometheus` (Prometheus-compatible query API and long-term metrics storage backend)
 - Loki: `http://localhost:3100` (log aggregation backend)
 - Promtail: log collector agent (no UI)
+- MinIO: S3-compatible backend used by Loki/Tempo (internal network only)
+
+### 2.1 Verify S3-Compatible Persistence (MinIO)
+
+After generating traffic, run this command to list buckets and sample objects:
+
+```powershell
+docker run --rm --entrypoint /bin/sh --network mcdonalds_project_default minio/mc:latest -c "mc alias set local http://minio:9000 minioadmin minioadmin >/dev/null && echo 'Buckets:' && mc ls local && echo 'Loki objects:' && mc ls local/loki-logs --recursive | head -n 10 && echo 'Tempo objects:' && mc ls local/tempo-traces --recursive | head -n 10"
+```
+
+Expected result:
+
+- Buckets `loki-logs` and `tempo-traces` exist
+- Loki bucket contains chunk/index objects
+- Tempo bucket contains block objects (`data.parquet`, `meta.json`, `index`, `bloom-*`)
 
 ### 3. Start the Flask backend
 

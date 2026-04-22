@@ -13,7 +13,52 @@ receivers:
           static_configs:
             - targets: ["host.docker.internal:5000"]
 
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
 processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+  resource:
+    attributes:
+      - key: service.namespace
+        value: mcdonalds-project
+        action: upsert
+      - key: deployment.environment
+        value: local
+        action: upsert
+  attributes/sanitize:
+    actions:
+      - key: http.request.header.authorization
+        action: delete
+      - key: enduser.id
+        action: hash
+  filter/drop-noise:
+    error_mode: ignore
+    traces:
+      span:
+        - 'name == "GET /health"'
+        - 'name == "GET /metrics"'
+  tail_sampling:
+    decision_wait: 5s
+    num_traces: 10000
+    expected_new_traces_per_sec: 200
+    policies:
+      - name: keep-errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: keep-slow-traces
+        type: latency
+        latency:
+          threshold_ms: 500
+      - name: baseline-sample
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 20
   cumulativetodelta:
   batch:
     timeout: 5s
@@ -41,12 +86,13 @@ exporters:
       max_elapsed_time: 300s
 
 service:
+  extensions: [health_check]
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [memory_limiter, resource, attributes/sanitize, filter/drop-noise, tail_sampling, batch]
       exporters: [otlp_grpc/tempo, otlp_http/dynatrace]
     metrics:
       receivers: [prometheus]
-      processors: [cumulativetodelta, batch]
+      processors: [memory_limiter, resource, cumulativetodelta, batch]
       exporters: [otlp_http/dynatrace]
