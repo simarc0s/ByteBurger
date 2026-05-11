@@ -31,7 +31,7 @@ groups:
       # Alert: Service Down (health check failing)
       - alert: ServiceDown
         expr: |
-          up{job="flask_app"} == 0
+          up{job="flask_app", instance="otel-collector:8889"} == 0
         for: 1m
         labels:
           severity: critical
@@ -42,7 +42,7 @@ groups:
       # Alert: High Memory Usage (> 500MB)
       - alert: HighMemoryUsage
         expr: |
-          process_resident_memory_bytes > 500000000
+          max(process_resident_memory_bytes{job="flask_app", instance="otel-collector:8889"}) > 500000000
         for: 2m
         labels:
           severity: warning

@@ -5,6 +5,9 @@ datasources:
     uid: tempo
     url: http://tempo:3200
     access: proxy
+    jsonData:
+      exploreLogs: true
+      traceToLogs: true
   - name: Prometheus
     type: prometheus
     uid: prometheus
@@ -15,6 +18,16 @@ datasources:
     uid: loki
     url: http://loki:3100
     access: proxy
+    jsonData:
+      derivedFields:
+        - name: trace_id
+          matcherRegex: 'trace_id=([0-9a-f]{32})'
+          datasourceUid: tempo
+          datasourceName: Tempo
+        - name: span_id
+          matcherRegex: 'span_id=([0-9a-f]{16})'
+          datasourceUid: tempo
+          datasourceName: Tempo
   - name: Mimir
     type: prometheus
     uid: mimir

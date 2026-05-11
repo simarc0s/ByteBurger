@@ -20,7 +20,7 @@ scrape_configs:
           - localhost
         labels:
           job: flask
-          __path__: /var/lib/docker/containers/*/*-json.log
+          __path__: /var/log/mcdonalds-app/flask.log
 
 clients:
   - url: http://loki:3100/loki/api/v1/push

@@ -80,8 +80,19 @@ handler.setFormatter(
 )
 handler.addFilter(TraceContextFilter())
 
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+file_handler = logging.FileHandler(LOG_DIR / "flask.log", encoding="utf-8")
+file_handler.setFormatter(
+    logging.Formatter(
+        "%(asctime)s %(levelname)s [trace_id=%(trace_id)s span_id=%(span_id)s] %(message)s"
+    )
+)
+file_handler.addFilter(TraceContextFilter())
+
 app.logger.handlers.clear()
 app.logger.addHandler(handler)
+app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.INFO)
 app.logger.propagate = False
 

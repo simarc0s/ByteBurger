@@ -16,7 +16,7 @@ Note: the old Kivy frontend was removed due to Python 3.14 compatibility issues.
 
 ### Application
 
-- `app/FlaskServer.py`: REST API, authentication, order logic, and web routes
+- `app/FlaskServer.py`: REST API, authentication, order logic, web routes, and structured file logging to `logs/flask.log`
 - `templates/login.html`: login page
 - `templates/orders.html`: order creation page
 - `static/images/`: burger images
@@ -30,8 +30,8 @@ Note: the old Kivy frontend was removed due to Python 3.14 compatibility issues.
 - Tempo stores traces and exposes its HTTP API on `3200`
 - Prometheus scrapes metrics from Flask `/metrics` endpoint on `9090`
 - Mimir provides long-term storage backend for Prometheus metrics on `9009`
-- Loki aggregates and stores logs from all containers (`3100`)
-- Promtail is a log collector agent that sends logs to Loki
+- Loki aggregates and stores application logs shipped by Promtail (`3100`)
+- Promtail tails `logs/flask.log` and sends it to Loki
 - MinIO provides S3-compatible object storage for Loki and Tempo (internal Docker network)
 - Alertmanager routes Prometheus alerts to email notifications
 - Grafana connects to Tempo (traces), Prometheus (metrics), Loki (logs), and Mimir (historical metrics)

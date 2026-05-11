@@ -70,6 +70,8 @@ exporters:
     endpoint: tempo:4317 # Send traces to the Tempo backend
     tls:
       insecure: true
+  prometheus:
+    endpoint: 0.0.0.0:8889
   otlp_http/dynatrace:
     endpoint: ${env:DT_OTLP_ENDPOINT}
     headers:
@@ -95,4 +97,4 @@ service:
     metrics:
       receivers: [prometheus]
       processors: [memory_limiter, resource, cumulativetodelta, batch]
-      exporters: [otlp_http/dynatrace]
+      exporters: [prometheus, otlp_http/dynatrace]
