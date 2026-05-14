@@ -1,4 +1,4 @@
-# McDonalds Project - Burger Order Management with Observability
+# ByteBurger - Burger Order Management with Observability
 
 ## Overview
 
